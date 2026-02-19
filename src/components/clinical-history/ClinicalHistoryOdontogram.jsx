@@ -12,6 +12,7 @@ const ClinicalHistoryOdontogram = ({
     patientId,
     data,
     onDataChange,
+    antecedentes,
     activeType,
     onTypeChange,
     onCreateBudget,
@@ -30,6 +31,7 @@ const ClinicalHistoryOdontogram = ({
     // Initialize with 3 empty bullets
     const [notesList, setNotesList] = useState(['', '', '']);
     const [loading, setLoading] = useState(false);
+    const [isAlertDismissed, setIsAlertDismissed] = useState(false);
     // Toast notification
     const [toast, setToast] = useState(null);
     const toastTimeout = useRef(null);
@@ -284,36 +286,96 @@ const ClinicalHistoryOdontogram = ({
     };
 
     const handleNoteBlur = (index) => {
-        // If an item is empty and it is NOT the last item, remove it.
-        // We also want to keep at least one item if all are deleted (but the logic below handles that by keeping the last one)
-        /* 
-           Logic:
-           Filter out empty strings efficiently, but ALWAYS ensure the last item remains (even if empty) to allow typing.
-           Actually, if I delete item 2 of 5, I want it gone.
-           So: filter all empty items, THEN ensure there's at least one empty item at the end.
-        */
-
         // Wait a tick to ensure we don't conflict with focus events or the "add new" logic
         setTimeout(() => {
             setNotesList(prev => {
-                // Remove empty notes, but we must handle the "last one empty" rule carefully.
-                // It's easier to just remove all empty notes except the very last one.
-
-                // Let's filter: keep if not empty OR if it is the last index
                 const filtered = prev.filter((note, idx) => note.trim() !== '' || idx === prev.length - 1);
-
-                // If the resulting list has no empty last item (e.g. user filled the last one and then blurred), add one
                 if (filtered.length === 0 || filtered[filtered.length - 1].trim() !== '') {
                     filtered.push('');
                 }
-
                 return filtered;
             });
         }, 100);
     };
 
+    // Medical Conditions Mapping
+    const alertLabels = {
+        enfermedadCardiaca: 'Enf. Cardíaca',
+        enfermedadRenal: 'Enf. Renal',
+        alergias: 'Alergias',
+        hemorragia: 'Hemorragia',
+        diabetes: 'Diabetes',
+        hepatitis: 'Hepatitis',
+        presionAlta: 'Presión Alta',
+        epilepsia: 'Epilepsia',
+        vih: 'V.I.H.',
+        problemasHemorragicos: 'Prob. Hemorrágicos',
+        medicado: 'Medicado',
+        embarazada: 'Embarazada',
+        cancer: 'Cáncer',
+        tdah: 'TDA/TDAH',
+    };
+
+    const activeAlerts = Object.keys(alertLabels)
+        .filter(key => antecedentes?.[key])
+        .map(key => alertLabels[key]);
+
+    if (antecedentes?.otros?.trim()) {
+        activeAlerts.push(antecedentes.otros);
+    }
+
     return (
         <div className={styles.tabContent}>
+            {activeAlerts.length > 0 && !isAlertDismissed && (
+                <div style={{
+                    marginBottom: '16px',
+                    padding: '12px 20px',
+                    background: '#fff7ed',
+                    border: '1px solid #ffedd5',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    animation: 'fadeInDown 0.4s ease',
+                    boxShadow: '0 4px 6px -1px rgba(251, 146, 60, 0.1)'
+                }}>
+                    <div style={{
+                        width: '32px',
+                        height: '32px',
+                        background: '#fb923c',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        flexShrink: 0
+                    }}>
+                        <AlertTriangle size={18} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                        <h4 style={{ margin: 0, fontSize: '13px', fontWeight: '700', color: '#9a3412', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Antecedentes médicos:
+                        </h4>
+                        <p style={{ margin: '2px 0 0', fontSize: '14px', color: '#c2410c', fontWeight: '600' }}>
+                            {activeAlerts.join(' • ')}
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => setIsAlertDismissed(true)}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: '6px',
+                            cursor: 'pointer',
+                            color: '#9a3412',
+                            opacity: 0.6,
+                            transition: 'opacity 0.2s'
+                        }}
+                    >
+                        <X size={18} />
+                    </button>
+                </div>
+            )}
 
 
             <div className={styles.odontogramContainer} ref={odontogramRef}>
@@ -483,6 +545,10 @@ const ClinicalHistoryOdontogram = ({
             @keyframes slideInRight {
                 from { transform: translateX(100px); opacity: 0; }
                 to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes fadeInDown {
+                from { transform: translateY(-10px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
             }
         `}</style>
         </div>

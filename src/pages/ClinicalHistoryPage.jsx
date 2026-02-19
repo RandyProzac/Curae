@@ -311,6 +311,7 @@ export default function ClinicalHistoryPage() {
                             patientId={patientId}
                             data={odontogramState[activeOdontogramType]}
                             onDataChange={handleOdontogramDataChange}
+                            antecedentes={formData.antecedentes}
                             // We force 'EVOLUTIVO' mode logic internally or just ignore type switching
                             activeType={activeOdontogramType}
                             onTypeChange={setActiveOdontogramType}
