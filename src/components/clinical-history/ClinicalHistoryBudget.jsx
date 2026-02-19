@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { budgetsApi, paymentsApi } from '../../lib/supabase';
 import ServiceSelector from '../appointments/ServiceSelector';
+import PrintableBudget from '../common/PrintableBudget';
 
 /**
  * ClinicalHistoryBudget
@@ -33,6 +34,21 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
     const [paymentMethod, setPaymentMethod] = useState('efectivo');
     const [paymentNotes, setPaymentNotes] = useState('');
     const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null });
+
+    // Print state
+    const [printingBudget, setPrintingBudget] = useState(null);
+    const [printingItemId, setPrintingItemId] = useState(null);
+
+    const handlePrint = (budget, itemId = null) => {
+        setPrintingBudget(budget);
+        setPrintingItemId(itemId);
+        // Wait for state to apply and component to render before printing
+        setTimeout(() => {
+            window.print();
+            setPrintingBudget(null);
+            setPrintingItemId(null);
+        }, 500);
+    };
 
     const loadBudgets = useCallback(async () => {
         if (!patientId) return;
@@ -321,6 +337,13 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
                                                                     >
                                                                         <Trash2 size={13} />
                                                                     </button>
+                                                                    <button
+                                                                        style={{ ...S.deleteItemBtn, color: '#64748b' }}
+                                                                        onClick={() => handlePrint(budget, item.id)}
+                                                                        title="Imprimir solo este item"
+                                                                    >
+                                                                        <Printer size={13} />
+                                                                    </button>
                                                                 </div>
                                                             </td>
                                                         </tr>
@@ -409,14 +432,14 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
                                     {items.length > 0 && (
                                         <div style={S.footer}>
                                             <div style={S.footerActions}>
-                                                <button style={S.actionBtn} onClick={() => window.print()}>
+                                                <button style={S.actionBtn} onClick={() => handlePrint(budget)}>
                                                     <Printer size={16} /> Imprimir
                                                 </button>
                                                 <button
                                                     style={{ ...S.actionBtn, color: '#25d366', borderColor: '#25d366' }}
                                                     onClick={() => {
                                                         const phone = patientPhone ? `51${patientPhone}` : '';
-                                                        const msg = `Hola ${patientName || ''}, te envío el detalle de tu presupuesto por *${budget.title || budget.name}*.\nTotal: S/ ${totals.total.toFixed(2)}\nSaludos, Curae.`;
+                                                        const msg = `Hola ${patientName || ''}, te envío el detalle de tu presupuesto por *${budget.title || budget.name || 'tu tratamiento'}*.\nTotal: S/ ${totals.total.toFixed(2)}\nSaludos, Curae.`;
                                                         if (patientPhone) {
                                                             window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
                                                         } else {
@@ -424,7 +447,7 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
                                                         }
                                                     }}
                                                 >
-                                                    <MessageCircle size={16} /> Enviar
+                                                    <MessageCircle size={16} /> Enviar por WhatsApp
                                                 </button>
                                             </div>
                                             <div style={S.summaryGrid}>
@@ -502,6 +525,16 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Hidden Printable Content */}
+            {printingBudget && (
+                <PrintableBudget
+                    patientName={patientName}
+                    patientPhone={patientPhone}
+                    budget={printingBudget}
+                    printItemId={printingItemId}
+                />
             )}
         </>
     );
@@ -734,19 +767,21 @@ const S = {
     footerActions: {
         display: 'flex',
         gap: '8px',
+        alignItems: 'center',
     },
     actionBtn: {
         display: 'flex',
         alignItems: 'center',
-        gap: '4px',
-        padding: '8px 14px',
+        gap: '6px',
+        padding: '8px 16px',
         border: '1px solid #e2e8f0',
         borderRadius: '8px',
         cursor: 'pointer',
         fontSize: '13px',
-        fontWeight: '500',
-        color: '#64748b',
+        fontWeight: '600',
+        color: '#334155',
         background: 'white',
+        height: '36px',
     },
     summaryGrid: {
         display: 'grid',

@@ -12,6 +12,7 @@ import ServicesPage from './pages/ServicesPage';
 import DoctorsPage from './pages/DoctorsPage';
 import FinancePage from './pages/FinancePage';
 import InventoryPage from './pages/InventoryPage';
+import ExpensesPage from './pages/ExpensesPage';
 import TreatmentEvolutionPage from './pages/TreatmentEvolutionPage';
 
 // Protected Route Component
@@ -65,6 +66,7 @@ const AppRouter = () => {
                 {/* Placeholders */}
                 <Route path="agenda" element={<div>Módulo Agenda (Próximamente)</div>} />
                 <Route path="finanzas" element={<FinancePage />} />
+                <Route path="gastos" element={<ExpensesPage />} />
                 <Route path="doctores" element={<DoctorsPage />} />
                 <Route path="configuracion" element={<div>Módulo Configuración (Próximamente)</div>} />
             </Route>

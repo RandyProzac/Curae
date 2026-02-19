@@ -321,7 +321,11 @@ export default function ClinicalHistoryPage() {
 
                 {activeTab === 'PLAN_TRATAMIENTO' && (
                     <div className={styles.content}>
-                        <TreatmentPlans patientId={patientId} />
+                        <TreatmentPlans
+                            patientId={patientId}
+                            patientName={`${formData.nombres} ${formData.apellidos}`.trim()}
+                            patientPhone={formData.telefono}
+                        />
                     </div>
                 )}
 

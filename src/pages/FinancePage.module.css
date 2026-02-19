@@ -1,139 +1,440 @@
 .container {
-    padding: 32px;
+    padding: 24px;
     background: #f8fafc;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     gap: 24px;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
+/* --- Header --- */
 .header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
+    align-items: flex-end;
+    padding-bottom: 0px;
 }
 
 .title h2 {
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: var(--gray-900);
-    margin-bottom: 4px;
+    font-size: 1.875rem;
+    /* 30px */
+    font-weight: 800;
+    /* Extra bold for impact */
+    color: #0f172a;
+    /* Slate 900 */
+    margin: 0 0 8px 0;
+    letter-spacing: -0.025em;
 }
 
 .title p {
-    color: var(--gray-500);
+    color: #64748b;
+    /* Slate 500 */
+    font-size: 0.95rem;
+    margin: 0;
 }
 
-/* Tabs */
-.tabsContainer {
+/* Controls (Date Picker, Export) */
+.controls {
     display: flex;
-    gap: 8px;
-    border-bottom: 1px solid var(--gray-200);
-    margin-bottom: 16px;
+    gap: 12px;
+    align-items: center;
 }
 
-.tab {
-    padding: 12px 24px;
-    font-weight: 600;
-    color: var(--gray-500);
-    background: none;
+.navGroup {
+    display: flex;
+    align-items: center;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s;
+    height: 42px;
+}
+
+.navGroup:hover {
+    border-color: #cbd5e1;
+}
+
+.periodSelect {
+    background: transparent;
     border: none;
-    border-bottom: 3px solid transparent;
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 0.95rem;
+    padding: 0 12px;
+    cursor: pointer;
+    outline: none;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    appearance: none;
+    /* Hide default arrow for cleaner look */
+    text-align: center;
+}
+
+.periodSelect:hover {
+    color: #3b82f6;
+}
+
+.navArrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    color: #64748b;
     cursor: pointer;
     transition: all 0.2s;
-    font-size: 1rem;
 }
 
-.tab:hover {
-    color: var(--gray-700);
-    background: var(--gray-50);
+.navArrow:hover {
+    background: #f1f5f9;
+    color: #1e293b;
 }
 
-.activeTab {
-    color: var(--primary-blue);
-    border-bottom-color: var(--primary-blue);
-    background: white;
-}
-
-/* Cards & Content */
-.contentArea {
-    flex: 1;
+.addExpenseBtn {
     display: flex;
-    flex-direction: column;
-    gap: 24px;
+    align-items: center;
+    gap: 10px;
+    padding: 0 20px;
+    background: #0f172a;
+    color: white;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    height: 42px;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
-.kpiRow {
+.addExpenseBtn:hover {
+    background: #1e293b;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.15);
+}
+
+.addExpenseBtn:active {
+    transform: translateY(0);
+}
+
+/* --- Main Grid Layout --- */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    grid-auto-rows: min-content;
+}
+
+/* --- Section: Today's Overview (Top Row) --- */
+.sectionToday {
+    grid-column: 1 / -1;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 24px;
 }
 
-.kpiCard {
+.todayCard {
     background: white;
-    padding: 24px;
+    padding: 20px;
     border-radius: 12px;
-    border: 1px solid var(--gray-200);
+    border: 1px solid #e2e8f0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.kpiLabel {
-    font-size: 0.875rem;
-    color: var(--gray-500);
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+.todayCard:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
-.kpiValue {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--gray-900);
-}
-
-.balancePositive {
-    color: var(--success);
-}
-
-.balanceNegative {
-    color: var(--error);
-}
-
-/* Buttons & Filters */
-.actionHeader {
+.todayHeader {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
-.addButton {
+.todayValue {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 8px 0 4px;
+    letter-spacing: -0.025em;
+}
+
+.todayTrend {
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.trendUp {
+    color: #10b981;
+}
+
+.trendDown {
+    color: #ef4444;
+}
+
+.trendNeutral {
+    color: #64748b;
+}
+
+/* --- Section: Monthly KPIs (Second Row) --- */
+.kpiCard {
+    background: white;
+    padding: 24px;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 140px;
+    grid-column: span 1;
+}
+
+.kpiIcon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.iconBlue {
+    background: #eff6ff;
+    color: #3b82f6;
+}
+
+.iconGreen {
+    background: #f0fdf4;
+    color: #10b981;
+}
+
+.iconYellow {
+    background: #fefce8;
+    color: #f59e0b;
+}
+
+.iconPurple {
+    background: #f3e8ff;
+    color: #a855f7;
+}
+
+.kpiLabel {
+    font-size: 0.9rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.kpiValue {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+/* --- Section: Charts (Large Area) --- */
+.chartSection {
+    grid-column: span 3;
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    padding: 24px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    min-height: 300px;
+}
+
+.chartHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+
+.chartTitle h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.chartTitle p {
+    margin: 4px 0 0;
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+/* --- Section: Side Panel (Alerts/Breakdown) --- */
+.sidePanel {
+    grid-column: 4;
+    grid-row: span 2;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.sideCard {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    padding: 20px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.sideTitle {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Alerts List */
+.alertList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.alertItem {
+    padding: 12px;
+    border-radius: 8px;
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.alertIcon {
+    color: #b45309;
+    padding-top: 2px;
+}
+
+.alertContent h4 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #92400e;
+}
+
+.alertContent p {
+    margin: 4px 0 0;
+    font-size: 0.8rem;
+    color: #b45309;
+    line-height: 1.4;
+}
+
+/* Inventory Mini List */
+.inventoryItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.inventoryItem:last-child {
+    border-bottom: none;
+}
+
+.itemName {
+    font-size: 0.9rem;
+    color: #334155;
+    font-weight: 500;
+}
+
+.itemValue {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #3b82f6;
+}
+
+/* --- Projections / Cash Flow Mini --- */
+.projectionValue {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.projectionLabel {
+    font-size: 0.8rem;
+    color: #64748b;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+/* --- Quick Actions (Floating or Bottom) --- */
+.quickActions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 16px;
+    justify-content: flex-end;
+}
+
+.actionBtn {
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 10px 20px;
-    background: var(--primary-blue);
-    color: white;
     font-weight: 600;
-    border: none;
     border-radius: 8px;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s;
+    font-size: 0.9rem;
 }
 
-.addButton:hover {
-    background: var(--primary-blue-dark);
+.primaryAction {
+    background: #0f172a;
+    color: white;
+    border: 1px solid #0f172a;
 }
 
-/* Tables */
+.primaryAction:hover {
+    background: #1e293b;
+}
+
+.secondaryAction {
+    background: white;
+    color: #0f172a;
+    border: 1px solid #e2e8f0;
+}
+
+.secondaryAction:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+/* --- Restored Legacy Components (Inventory) --- */
 .tableContainer {
     background: white;
     border-radius: 12px;
-    border: 1px solid var(--gray-200);
+    border: 1px solid #e2e8f0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     overflow: hidden;
 }
@@ -146,20 +447,20 @@
 .table th {
     text-align: left;
     padding: 16px 24px;
-    background: var(--gray-50);
-    color: var(--gray-600);
+    background: #f8fafc;
+    color: #475569;
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    border-bottom: 1px solid var(--gray-200);
+    border-bottom: 1px solid #e2e8f0;
 }
 
 .table td {
     padding: 14px 24px;
-    border-bottom: 1px solid var(--gray-100);
+    border-bottom: 1px solid #f1f5f9;
     vertical-align: middle;
-    color: var(--gray-700);
+    color: #334155;
     font-size: 0.9rem;
 }
 
@@ -167,70 +468,23 @@
     border-bottom: none;
 }
 
-/* Status Badges */
-.statusBadge {
+.categoryBadge {
     display: inline-block;
-    padding: 4px 10px;
+    padding: 2px 10px;
     border-radius: 12px;
     font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
+    font-weight: 500;
+    background: #f1f5f9;
+    color: #475569;
 }
 
-.statusPagado {
-    background: var(--green-50);
-    color: var(--success);
-}
-
-.statusPendiente {
-    background: #fef3c7;
-    color: #d97706;
-}
-
-.typeBadge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    border: 1px solid var(--gray-200);
-    background: var(--gray-50);
-    color: var(--gray-600);
-}
-
-.stockAlert {
-    color: #ef4444;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-/* Dashboard Grid */
-.dashboardGrid {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-}
-
-/* Chart Container */
-.chartContainer {
-    background: white;
-    padding: 24px;
-    border-radius: 12px;
-    border: 1px solid var(--gray-200);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-/* Icon Button (edit/delete inline) */
 .iconBtn {
     background: none;
     border: none;
     cursor: pointer;
     padding: 6px;
     border-radius: 6px;
-    color: var(--gray-500);
+    color: #64748b;
     transition: all 0.15s ease;
     display: inline-flex;
     align-items: center;
@@ -238,37 +492,292 @@
 }
 
 .iconBtn:hover {
-    background: var(--gray-100);
-    color: var(--gray-700);
+    background: #f1f5f9;
+    color: #334155;
 }
 
-/* Secondary Button */
 .secondaryButton {
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 10px 20px;
     background: white;
-    color: var(--gray-700);
+    color: #334155;
     font-weight: 600;
-    border: 1px solid var(--gray-300);
+    border: 1px solid #cbd5e1;
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .secondaryButton:hover {
-    background: var(--gray-50);
-    border-color: var(--gray-400);
+    background: #f8fafc;
+    border-color: #94a3b8;
 }
 
-/* Category Badge (Inventory) */
-.categoryBadge {
-    display: inline-block;
-    padding: 2px 10px;
+.addButton {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: #3b82f6;
+    color: white;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.addButton:hover {
+    background: #2563eb;
+}
+
+.contentArea {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .chartSection {
+        grid-column: span 2;
+    }
+
+    .sidePanel {
+        grid-column: span 2;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .sectionToday {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .sectionToday {
+        grid-template-columns: 1fr;
+    }
+
+    .grid {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .sidePanel {
+        display: flex;
+        flex-direction: column;
+    }
+}
+
+/* --- Section: Top Patients (Below Chart) --- */
+.topPatientsSection {
+    grid-column: span 3;
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    padding: 24px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.sectionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.searchBox {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: #f1f5f9;
+    padding: 0 16px;
+    border-radius: 10px;
+    flex: 1;
+    max-width: 400px;
+    height: 42px;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+}
+
+.searchBox:focus-within {
+    background: white;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.searchBox svg {
+    color: #64748b;
+}
+
+.searchBox input {
+    background: transparent;
+    border: none;
+    padding: 10px 12px;
+    width: 100%;
+    outline: none;
+    font-size: 0.9rem;
+    color: #1e293b;
+}
+
+.patientsList {
+    display: flex;
+    flex-direction: column;
+}
+
+.patientRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
     border-radius: 12px;
+    transition: background 0.2s;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.patientRow:hover {
+    background: #f8fafc;
+}
+
+.patientRow:last-child {
+    border-bottom: none;
+}
+
+.patientInfo {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.rankBadge {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 0.75rem;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.patientAvatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #eff6ff;
+    color: #3b82f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pName {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.pDni {
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+
+.patientValue {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: right;
+    min-width: 200px;
+}
+
+.vGroup {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    line-height: 1;
+}
+
+.vLabel {
+    font-size: 0.75rem;
+    color: #94a3b8;
     font-weight: 500;
-    background: var(--gray-100);
-    color: var(--gray-600);
+}
+
+.vBudget {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.vPaid {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f766e;
+}
+
+.vBar {
+    width: 100%;
+    height: 6px;
+    background: #f1f5f9;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 4px;
+}
+
+.vProgress {
+    height: 100%;
+    background: #10b981;
+    border-radius: 10px;
+}
+
+.noResults {
+    padding: 40px;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+@media (max-width: 1200px) {
+    .topPatientsSection {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width: 768px) {
+    .sectionHeader {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .searchBox {
+        max-width: 100%;
+    }
+}
+
+/* Utility Colors for text */
+.textGreen {
+    color: #10b981;
+}
+
+.textRed {
+    color: #ef4444;
+}
+
+.textOrange {
+    color: #f59e0b;
 }

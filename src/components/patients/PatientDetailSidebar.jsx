@@ -421,7 +421,11 @@ const PatientDetailSidebar = ({ patient, isOpen, onClose }) => {
 
                     ) : (
                         /* ===== PLANES DE TRATAMIENTO TAB ===== */
-                        <TreatmentPlans patientId={patient.id} />
+                        <TreatmentPlans
+                            patientId={patient.id}
+                            patientName={`${patient.first_name} ${patient.last_name}`.trim()}
+                            patientPhone={patient.phone}
+                        />
                     )}
                 </div >
             </div >

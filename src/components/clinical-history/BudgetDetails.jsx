@@ -13,13 +13,14 @@ import {
 } from 'lucide-react';
 import { budgetsApi, paymentsApi } from '../../lib/supabase';
 import ServiceSelector from '../appointments/ServiceSelector';
+import PrintableBudget from '../common/PrintableBudget';
 
 /**
  * BudgetDetails
  * Renders a single budget card with full details and actions.
  * Used in TreatmentPlans to show the associated budget.
  */
-export default function BudgetDetails({ budget, patientId, patientName, patientPhone, onUpdate }) {
+export default function BudgetDetails({ budget, patientId, patientName, patientPhone, planTitle, onUpdate }) {
     const [isExpanded, setIsExpanded] = useState(true); // Default expanded for "Superpresupuesto" look
     const [addingItem, setAddingItem] = useState(false);
 
@@ -37,6 +38,20 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
 
     // Confirm Modal
     const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null });
+
+    // Print state
+    const [printingBudget, setPrintingBudget] = useState(null);
+    const [printingItemId, setPrintingItemId] = useState(null);
+
+    const handlePrint = (printBudget, itemId = null) => {
+        setPrintingBudget(printBudget);
+        setPrintingItemId(itemId);
+        setTimeout(() => {
+            window.print();
+            setPrintingBudget(null);
+            setPrintingItemId(null);
+        }, 500);
+    };
 
     // Inline Discount Editing
     const [editingDiscount, setEditingDiscount] = useState(null); // item id
@@ -261,6 +276,13 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                                                 >
                                                     <Trash2 size={13} />
                                                 </button>
+                                                <button
+                                                    style={{ ...S.deleteItemBtn, color: '#64748b' }}
+                                                    onClick={() => handlePrint(budget, item.id)}
+                                                    title="Imprimir solo este item"
+                                                >
+                                                    <Printer size={13} />
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -360,10 +382,23 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                     {/* Footer Summary */}
                     <div style={S.footer}>
                         <div style={S.footerActions}>
-                            <button style={S.actionBtn} onClick={() => window.print()}>
+                            <button style={S.actionBtn} onClick={() => handlePrint(budget)}>
                                 <Printer size={16} /> Imprimir
                             </button>
-                            {/* WhatsApp Button logic */}
+                            <button
+                                style={{ ...S.actionBtn, color: '#25d366', borderColor: '#25d366' }}
+                                onClick={() => {
+                                    const phone = patientPhone ? `51${patientPhone}` : '';
+                                    const msg = `Hola ${patientName || ''}, te envío el detalle de tu presupuesto por *${planTitle || budget.title || 'tu tratamiento'}*.\nTotal: S/ ${totals.total.toFixed(2)}\nSaludos, Curae.`;
+                                    if (patientPhone) {
+                                        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+                                    } else {
+                                        alert('El paciente no tiene un número de teléfono registrado.');
+                                    }
+                                }}
+                            >
+                                <MessageCircle size={16} /> Enviar por WhatsApp
+                            </button>
                         </div>
                         <div style={S.summaryGrid}>
                             <span style={S.summaryLabel}>Subtotal:</span>
@@ -441,6 +476,17 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                     </div>
                 )
             }
+
+            {/* Hidden Printable Content */}
+            {printingBudget && (
+                <PrintableBudget
+                    patientName={patientName}
+                    patientPhone={patientPhone}
+                    budget={printingBudget}
+                    planTitle={planTitle}
+                    printItemId={printingItemId}
+                />
+            )}
         </div >
     );
 }
@@ -467,9 +513,9 @@ const S = {
     paramInput: { width: '100%', padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '13px' },
     cancelBtn: { padding: '8px 16px', border: '1px solid #e2e8f0', borderRadius: '8px', cursor: 'pointer', background: 'white', fontSize: '13px' },
     confirmBtn: { padding: '8px 20px', border: 'none', borderRadius: '8px', cursor: 'pointer', background: '#0f766e', color: 'white', fontSize: '13px' },
-    footer: { display: 'flex', justifyContent: 'space-between', padding: '16px', background: '#f8fafc', borderTop: '1px solid #e2e8f0' },
-    footerActions: { display: 'flex', gap: '8px' },
-    actionBtn: { display: 'flex', gap: '4px', padding: '8px 14px', border: '1px solid #e2e8f0', borderRadius: '8px', cursor: 'pointer', background: 'white' },
+    footer: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: '#f8fafc', borderTop: '1px solid #e2e8f0' },
+    footerActions: { display: 'flex', gap: '8px', alignItems: 'center' },
+    actionBtn: { display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', border: '1px solid #e2e8f0', borderRadius: '8px', cursor: 'pointer', background: 'white', color: '#334155', fontWeight: '600', fontSize: '13px', height: '36px' },
     summaryGrid: { display: 'grid', gridTemplateColumns: 'auto auto', gap: '4px 16px', textAlign: 'right', fontSize: '13px' },
     summaryLabel: { color: '#64748b', fontWeight: '500' },
     summaryValue: { color: '#1e293b', fontWeight: '500' },

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, UserPlus, MoreVertical, Calendar as CalendarIcon, FileText, Clock } from 'lucide-react';
+import { Search, UserPlus, Trash2, Calendar as CalendarIcon, FileText, Clock, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import NewPatientModal from '../components/patients/NewPatientModal';
 import PatientDetailSidebar from '../components/patients/PatientDetailSidebar';
@@ -50,6 +50,10 @@ const PatientsPage = () => {
     // Sidebar State
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [selectedPatient, setSelectedPatient] = useState(null);
+
+    // Delete Modal State
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [patientToDelete, setPatientToDelete] = useState(null);
 
     const [patients, setPatients] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -146,6 +150,26 @@ const PatientsPage = () => {
         }
     };
 
+    const handleDeletePatient = async () => {
+        if (!patientToDelete) return;
+
+        try {
+            const { error } = await supabase
+                .from('patients')
+                .delete()
+                .eq('id', patientToDelete.id);
+
+            if (error) throw error;
+
+            fetchPatients();
+            setIsDeleteModalOpen(false);
+            setPatientToDelete(null);
+        } catch (error) {
+            console.error('Error deleting patient:', error);
+            alert('Error al eliminar paciente: ' + error.message);
+        }
+    };
+
     const handlePatientClick = (patient) => {
         setSelectedPatient(patient);
         setIsSidebarOpen(true);
@@ -207,8 +231,6 @@ const PatientsPage = () => {
                         <thead>
                             <tr>
                                 <th>Paciente</th>
-                                <th>DNI</th>
-                                <th>Teléfono</th>
                                 <th>Última Cita</th>
                                 <th>Próxima Cita</th>
                                 <th className={styles.actionsHeader}>Acciones</th>
@@ -235,8 +257,6 @@ const PatientsPage = () => {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td>{patient.dni}</td>
-                                        <td>{patient.phone || '-'}</td>
                                         <td>{renderDateBadge(patient.lastVisit)}</td>
                                         <td>{renderDateBadge(patient.nextAppt)}</td>
                                         <td className={styles.actions}>
@@ -247,15 +267,22 @@ const PatientsPage = () => {
                                                 <FileText size={15} />
                                                 <span>Historia Clínica</span>
                                             </button>
-                                            <button className={styles.actionBtn}>
-                                                <MoreVertical size={16} />
+                                            <button
+                                                className={`${styles.actionBtn} ${styles.deleteBtn}`}
+                                                onClick={() => {
+                                                    setPatientToDelete(patient);
+                                                    setIsDeleteModalOpen(true);
+                                                }}
+                                                title="Eliminar Paciente"
+                                            >
+                                                <Trash2 size={16} />
                                             </button>
                                         </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>
+                                    <td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>
                                         No se encontraron pacientes
                                     </td>
                                 </tr>
@@ -279,6 +306,30 @@ const PatientsPage = () => {
                     setSelectedPatient(null);
                 }}
             />
+
+            {/* Reconfirmation Modal */}
+            {isDeleteModalOpen && (
+                <div className={styles.modalOverlay} onClick={() => setIsDeleteModalOpen(false)}>
+                    <div className={styles.confirmModal} onClick={e => e.stopPropagation()}>
+                        <div className={styles.modalIcon}>
+                            <AlertTriangle size={32} />
+                        </div>
+                        <h3>¿Eliminar Paciente?</h3>
+                        <p style={{ color: '#64748b', marginTop: '10px' }}>
+                            Estás a punto de eliminar a <strong>{patientToDelete?.name}</strong>.
+                            Esta acción no se puede deshacer y borrará todo su historial.
+                        </p>
+                        <div className={styles.modalActions}>
+                            <button className={styles.cancelBtn} onClick={() => setIsDeleteModalOpen(false)}>
+                                Cancelar
+                            </button>
+                            <button className={styles.confirmBtn} onClick={handleDeletePatient}>
+                                Sí, Eliminar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

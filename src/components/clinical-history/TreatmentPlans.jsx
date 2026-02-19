@@ -25,7 +25,7 @@ const formatCurrency = (amount) => {
     }).format(amount || 0);
 };
 
-export default function TreatmentPlans({ patientId }) {
+export default function TreatmentPlans({ patientId, patientName, patientPhone }) {
     const [plans, setPlans] = useState([]);
     const [loading, setLoading] = useState(true);
     const [expandedPlanId, setExpandedPlanId] = useState(null);
@@ -193,10 +193,10 @@ export default function TreatmentPlans({ patientId }) {
                                             value={plan.status}
                                             onChange={(e) => handleStatusChange(plan.id, e.target.value)}
                                             className={`${styles.statusSelect} ${plan.status === 'active'
-                                                    ? styles.statusSelectActive
-                                                    : (plan.status === 'completed'
-                                                        ? styles.statusSelectCompleted
-                                                        : styles.statusSelectArchived)
+                                                ? styles.statusSelectActive
+                                                : (plan.status === 'completed'
+                                                    ? styles.statusSelectCompleted
+                                                    : styles.statusSelectArchived)
                                                 }`}
                                         >
                                             <option value="active">ACTIVO</option>
@@ -271,6 +271,9 @@ export default function TreatmentPlans({ patientId }) {
                                             <BudgetDetails
                                                 budget={plan.budget}
                                                 patientId={patientId}
+                                                patientName={patientName}
+                                                patientPhone={patientPhone}
+                                                planTitle={plan.title}
                                                 onUpdate={fetchPlans} // Refresh on changes
                                             />
                                         </div>

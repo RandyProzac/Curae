@@ -568,8 +568,8 @@ export const financeApi = {
      * Get all payments with patient and budget details
      * Returns flattened structure for reporting
      */
-    async getPaymentsWithDetails() {
-        const { data, error } = await supabase
+    async getPaymentsWithDetails(startDate = null, endDate = null) {
+        let query = supabase
             .from('payments')
             .select(`
                 *,
@@ -582,8 +582,12 @@ export const financeApi = {
                         patient:patients(id, first_name, last_name, dni)
                     )
                 )
-            `)
-            .order('created_at', { ascending: false });
+            `);
+
+        if (startDate) query = query.gte('created_at', startDate);
+        if (endDate) query = query.lte('created_at', endDate);
+
+        const { data, error } = await query.order('created_at', { ascending: false });
 
         if (error) {
             console.warn('Error fetching payments with details:', error);
@@ -632,9 +636,9 @@ export const financeApi = {
     /**
      * Get revenue grouped by doctor (Best effort using appointments)
      */
-    async getRevenueByDoctor() {
+    async getRevenueByDoctor(startDate = null, endDate = null) {
         // 1. Get all payments joined with patients
-        const payments = await this.getPaymentsWithDetails();
+        const payments = await this.getPaymentsWithDetails(startDate, endDate);
 
         // 2. Get all appointments to map Patient -> Doctor
         // We link patients to the doctor they see most often or last saw
@@ -677,41 +681,87 @@ export const financeApi = {
     },
 
     /**
-     * Get investment per patient
+     * Get finance stats per patient (Total Paid and Total Budget)
+     * Useful for identifying top spenders and patient value
      */
-    async getInvestmentByPatient() {
-        // Wrap entire logic in try-catch since getPaymentsWithDetails already handles its own error
+    async getPatientFinanceStats(limit = 10, startDate = null, endDate = null) {
         try {
-            const payments = await this.getPaymentsWithDetails();
-            if (!payments || payments.length === 0) return [];
+            // 1. Get all budgets with items to calculate total commitment
+            // Note: Commitment is usually all-time per patient, but we could link it to the period if needed.
+            // For now, we fetch all to have context, but we will focus on payments in the period.
+            const { data: budgets, error: bError } = await supabase
+                .from('budgets')
+                .select(`
+                    id,
+                    patient_id,
+                    patient:patients(first_name, last_name, dni),
+                    budget_items(unit_price, quantity, discount, discount_type)
+                `);
 
-            const investmentMap = {};
+            if (bError) throw bError;
 
-            payments.forEach(p => {
-                if (!p.patientId) return;
+            // 2. Get all payments to calculate actual revenue
+            let pQuery = supabase
+                .from('payments')
+                .select('amount, created_at, budget_item:budget_items(budget_id)');
 
-                if (!investmentMap[p.patientId]) {
-                    investmentMap[p.patientId] = {
-                        id: p.patientId,
-                        name: p.patientName,
-                        dni: p.patientDni,
-                        totalPaid: 0,
-                        lastPayment: p.date
+            if (startDate) pQuery = pQuery.gte('created_at', startDate);
+            if (endDate) pQuery = pQuery.lte('created_at', endDate);
+
+            const { data: payments, error: pError } = await pQuery;
+
+            if (pError) throw pError;
+
+            // Map to aggregate
+            const statsMap = {};
+
+            // Process budgets for commitment
+            budgets.forEach(b => {
+                if (!b.patient_id) return;
+                const pid = b.patient_id;
+                if (!statsMap[pid]) {
+                    statsMap[pid] = {
+                        id: pid,
+                        name: `${b.patient?.first_name} ${b.patient?.last_name}`,
+                        dni: b.patient?.dni,
+                        totalBudget: 0,
+                        totalPaid: 0
                     };
                 }
 
-                investmentMap[p.patientId].totalPaid += p.amount;
-                // Keep most recent date
-                if (new Date(p.date) > new Date(investmentMap[p.patientId].lastPayment)) {
-                    investmentMap[p.patientId].lastPayment = p.date;
+                (b.budget_items || []).forEach(item => {
+                    const raw = (parseFloat(item.unit_price) || 0) * (item.quantity || 1);
+                    const disc = parseFloat(item.discount) || 0;
+                    const amount = item.discount_type === 'percent' ? raw * (1 - disc / 100) : raw - disc;
+                    statsMap[pid].totalBudget += Math.max(0, amount);
+                });
+            });
+
+            // Process payments for actual revenue
+            // (Alternative: we could use the paid_amount on budget_items if trusted)
+            payments.forEach(p => {
+                const budgetId = p.budget_item?.budget_id;
+                const budget = budgets.find(b => b.id === budgetId);
+                const pid = budget?.patient_id;
+                if (pid && statsMap[pid]) {
+                    statsMap[pid].totalPaid += parseFloat(p.amount) || 0;
                 }
             });
 
-            return Object.values(investmentMap).sort((a, b) => b.totalPaid - a.totalPaid);
+            const result = Object.values(statsMap).sort((a, b) => b.totalPaid - a.totalPaid);
+            return limit ? result.slice(0, limit) : result;
+
         } catch (error) {
-            console.warn('Error calculating investment by patient:', error);
+            console.warn('Error fetching patient finance stats:', error);
             return [];
         }
+    },
+
+    /**
+     * Get investment per patient (Legacy - kept for backward compatibility if used elsewhere)
+     */
+    async getInvestmentByPatient() {
+        return this.getPatientFinanceStats(0);
     },
 
     /**
