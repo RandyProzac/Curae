@@ -1,0 +1,393 @@
+/* ServicesPage.module.css */
+
+.container {
+    padding: var(--spacing-xl);
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow: hidden;
+    /* Fix double scrollbar issues */
+    height: 100%;
+}
+
+/* Header Section */
+.contentHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-lg);
+}
+
+.headerTitle h3 {
+    margin-bottom: 4px;
+    font-size: 1.5rem;
+    color: var(--gray-900);
+}
+
+.headerTitle p {
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+}
+
+.addButton {
+    background: var(--primary-blue);
+    color: var(--white);
+    padding: 10px 20px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    transition: all 0.2s;
+    border: none;
+    box-shadow: var(--shadow-sm);
+}
+
+.addButton:hover {
+    background: var(--primary-blue-dark);
+    transform: translateY(-1px);
+}
+
+.controls {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 8px;
+}
+
+/* Catalog Scroll Area */
+.catalogContainer {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 8px;
+    /* For scrollbar space */
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Category Section */
+.categorySection {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--gray-200);
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+    flex-shrink: 0;
+    /* Prevent crushing */
+}
+
+.categorySection:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.categoryHeader {
+    padding: 16px 20px;
+    background: var(--gray-50);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid transparent;
+}
+
+.categoryHeader.expanded {
+    border-bottom-color: var(--gray-200);
+}
+
+.categoryTitle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--gray-800);
+}
+
+.categoryIcon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.itemCount {
+    font-size: 12px;
+    color: var(--gray-500);
+    background: rgba(0, 0, 0, 0.05);
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-left: auto;
+    margin-right: 12px;
+}
+
+/* Search Bar */
+.searchBar {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    align-items: center;
+}
+
+.searchIcon {
+    position: absolute;
+    left: 12px;
+    color: var(--gray-400);
+    pointer-events: none;
+    z-index: 10;
+}
+
+/* Services Table inside Category */
+.servicesTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.servicesTable tr {
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.servicesTable tr:last-child {
+    border-bottom: none;
+}
+
+.servicesTable td {
+    padding: 12px 20px;
+    vertical-align: middle;
+    color: var(--gray-700);
+    font-size: 14px;
+}
+
+.serviceName {
+    font-weight: 500;
+    color: var(--gray-900);
+    margin-bottom: 2px;
+}
+
+.serviceDesc {
+    font-size: 12px;
+    color: var(--gray-500);
+    display: block;
+}
+
+.servicePrice {
+    font-family: monospace;
+    font-weight: 600;
+    color: var(--gray-900);
+    background: var(--gray-50);
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--gray-200);
+}
+
+.serviceDuration {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--gray-500);
+    font-size: 13px;
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    opacity: 0;
+    /* Hide by default */
+    transition: opacity 0.2s;
+}
+
+.servicesTable tr:hover .actions {
+    opacity: 1;
+    /* Show on hover */
+}
+
+.actionBtn {
+    background: transparent;
+    border: 1px solid var(--gray-200);
+    color: var(--gray-500);
+    padding: 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.actionBtn:hover {
+    border-color: var(--primary-blue);
+    color: var(--primary-blue);
+    background: var(--blue-50);
+}
+
+
+
+.actionBtn.delete:hover {
+    border-color: #ef4444;
+    color: #ef4444;
+    background: #fef2f2;
+}
+
+
+/* Modal Styles */
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modalContent {
+    background: white;
+    width: 500px;
+    max-width: 90%;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modalHeader {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--gray-100);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modalHeader h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin: 0;
+}
+
+.closeBtn {
+    background: transparent;
+    border: none;
+    color: var(--gray-400);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+.closeBtn:hover {
+    background: var(--gray-100);
+    color: var(--gray-600);
+}
+
+.modalBody {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.formGroup label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray-700);
+}
+
+.input,
+.textarea,
+.select {
+    padding: 10px;
+    border: 1px solid var(--gray-300);
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+
+.input:focus,
+.textarea:focus,
+.select:focus {
+    border-color: var(--primary-blue);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.modalFooter {
+    padding: 16px 24px;
+    background: var(--gray-50);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid var(--gray-100);
+}
+
+.cancelBtn {
+    padding: 8px 16px;
+    background: white;
+    border: 1px solid var(--gray-300);
+    color: var(--gray-700);
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.saveBtn {
+    padding: 8px 16px;
+    background: var(--primary-blue);
+    border: none;
+    color: white;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.saveBtn:hover {
+    background: var(--primary-blue-dark);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .contentHeader {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .addButton {
+        width: 100%;
+        justify-content: center;
+    }
+}

@@ -1,0 +1,13 @@
+import { createClient } from '@supabase/supabase-js';
+
+// Load env vars (Manual hardcode for script execution context or rely on existing project structure if running via node)
+// Since this is a standalone script run by the agent, I will use placeholder values and ask the user to confirm or run it within the app context.
+// BETTER APPROACH: I will implement a temporary button in the UI (or a console command in the browser) to trigger this, 
+// as I don't have direct access to the user's .env secrets in this script context easily without reading files.
+// Let's create a temporary helper function in AppointmentsPage.jsx that can be triggered by a hidden button or console.
+
+/*
+STRATEGY:
+I will add a temporary button "Generar Test Data" in the AppointmentsPage.jsx (in development mode or hidden).
+This is safer and uses the existing supabase client instance.
+*/

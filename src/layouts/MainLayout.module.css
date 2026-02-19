@@ -1,0 +1,284 @@
+/* Main Layout Structure */
+.layout {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    background-color: var(--bg-app);
+    overflow: hidden;
+}
+
+/* Sidebar - Clean Light Design */
+.sidebar {
+    width: 220px;
+    background-color: #ffffff;
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    padding: var(--spacing-lg) 0;
+    transition: width var(--transition-normal);
+    border-right: 1px solid #e2e8f0;
+    z-index: var(--z-fixed);
+}
+
+.logoContainer {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: 0 var(--spacing-lg);
+    margin-bottom: var(--spacing-2xl);
+}
+
+.logoText {
+    font-size: 1.5rem;
+    font-weight: var(--weight-bold);
+    color: #1e293b;
+    letter-spacing: -0.02em;
+}
+
+/* Navigation */
+.nav {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    padding: 0 var(--spacing-md);
+}
+
+.navItem {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-md);
+    color: #64748b;
+    text-decoration: none;
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+    font-weight: var(--weight-medium);
+    font-size: 0.9rem;
+}
+
+.navItem:hover {
+    color: #1e293b;
+    background-color: #f1f5f9;
+}
+
+/* Active state - Curae Teal */
+.navItemActive {
+    color: #ffffff;
+    background-color: #14b8a6;
+    font-weight: var(--weight-semibold);
+    box-shadow: 0 2px 8px rgba(20, 184, 166, 0.3);
+}
+
+.navItemActive:hover {
+    color: #ffffff;
+    background-color: #0d9488;
+}
+
+.sidebarFooter {
+    padding: var(--spacing-lg) var(--spacing-md);
+    border-top: 1px solid #e2e8f0;
+    margin-top: auto;
+}
+
+.logoutBtn {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    width: 100%;
+    padding: var(--spacing-md);
+    color: #64748b;
+    background: none;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-size: 0.9rem;
+}
+
+.logoutBtn:hover {
+    color: #dc2626;
+    background-color: #fef2f2;
+}
+
+/* Main Content Area */
+.main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Header - Clean White */
+.header {
+    height: 80px;
+    background-color: var(--bg-card);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--spacing-xl);
+    border-bottom: 1px solid var(--border-subtle);
+    /* No shadow for cleaner look, just border */
+}
+
+.headerLeft {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.pageTitle {
+    font-size: 1.25rem;
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.headerRight {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-lg);
+}
+
+.userInfo {
+    text-align: right;
+    display: none;
+    /* Hide on mobile */
+}
+
+@media (min-width: 768px) {
+    .userInfo {
+        display: block;
+    }
+}
+
+.userName {
+    display: block;
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.userRole {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 2px;
+}
+
+.avatar {
+    width: 40px;
+    height: 40px;
+    background-color: var(--brand-sage);
+    /* Sage Green Avatar */
+    color: var(--white);
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: var(--weight-bold);
+    font-size: 1.1rem;
+    box-shadow: 0 0 0 2px var(--white), 0 0 0 4px var(--bg-app);
+    /* Ring effect */
+}
+
+/* Page Content Window */
+.content {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-xl);
+    scroll-behavior: smooth;
+}
+
+.contentCompact {
+    padding: var(--spacing-md);
+    height: 100%;
+    /* Ensure full height for calendar */
+    overflow: hidden;
+    /* Prevent double scrollbars if calendar manages scroll */
+}
+
+.contentFullWidth {
+    padding: 0;
+}
+
+/* Mobile Responsive */
+.mobileMenuBtn {
+    display: none;
+    color: var(--text-secondary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+}
+
+.closeSidebarBtn {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 8px;
+    margin-left: auto;
+}
+
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.overlayVisible {
+    opacity: 1;
+    visibility: visible;
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        position: fixed;
+        left: -280px;
+        top: 0;
+        height: 100%;
+        width: 280px;
+        z-index: 1000;
+        box-shadow: 4px 0 12px rgba(0, 0, 0, 0.1);
+        transition: left 0.3s ease;
+    }
+
+    .sidebarOpen {
+        left: 0;
+    }
+
+
+
+    .mobileMenuBtn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .closeSidebarBtn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .content {
+        padding: var(--spacing-md);
+    }
+
+    .logoContainer {
+        display: flex;
+        align-items: center;
+    }
+}
