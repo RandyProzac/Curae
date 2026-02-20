@@ -6,7 +6,9 @@ import {
     Stethoscope,
     Image as ImageIcon,
     DollarSign,
-    ClipboardList
+    ClipboardList,
+    AlertTriangle,
+    Info
 } from 'lucide-react'
 import { supabase, odontogramApi, budgetsApi, treatmentPlanApi } from '../lib/supabase'
 
@@ -24,6 +26,19 @@ export default function ClinicalHistoryPage() {
     const [loading, setLoading] = useState(true)
     const [historyId, setHistoryId] = useState(null)
     const [activeTab, setActiveTab] = useState('GENERAL')
+
+    // Custom Alert State
+    const [alertState, setAlertState] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'alert',
+        onConfirm: null
+    })
+
+    const showAlert = (message, title = 'Aviso', type = 'alert', onConfirm = null) => {
+        setAlertState({ isOpen: true, title, message, type, onConfirm })
+    }
 
     // Form Stats
     const [formData, setFormData] = useState({
@@ -227,11 +242,11 @@ export default function ClinicalHistoryPage() {
                 }
             }
 
-            alert('Datos generales guardados correctamente')
+            showAlert('Datos generales guardados correctamente', 'Éxito', 'alert')
 
         } catch (error) {
             console.error('Error saving:', error)
-            alert('Error al guardar: ' + error.message)
+            showAlert('Error al guardar: ' + error.message, 'Error', 'alert')
         } finally {
             setLoading(false)
         }
@@ -350,6 +365,48 @@ export default function ClinicalHistoryPage() {
 
 
             </div>
+
+            {/* CUSTOM ALERT MODAL */}
+            {
+                alertState.isOpen && (
+                    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                        <div style={{ background: 'white', padding: '24px', borderRadius: '16px', maxWidth: '400px', width: '90%', textAlign: 'center', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+                                {alertState.type === 'confirm' ? (
+                                    <div style={{ background: '#fef2f2', padding: '12px', borderRadius: '50%', color: '#ef4444' }}>
+                                        <AlertTriangle size={32} />
+                                    </div>
+                                ) : (
+                                    <div style={{ background: '#eff6ff', padding: '12px', borderRadius: '50%', color: '#3b82f6' }}>
+                                        <Info size={32} />
+                                    </div>
+                                )}
+                            </div>
+                            <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px', color: '#1e293b' }}>{alertState.title}</h3>
+                            <p style={{ color: '#64748b', marginBottom: '24px', lineHeight: '1.5' }}>{alertState.message}</p>
+                            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                                {alertState.type === 'confirm' && (
+                                    <button
+                                        onClick={() => setAlertState({ ...alertState, isOpen: false })}
+                                        style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', color: '#475569', fontWeight: '600', cursor: 'pointer' }}
+                                    >
+                                        Cancelar
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => {
+                                        if (alertState.onConfirm) alertState.onConfirm();
+                                        setAlertState({ ...alertState, isOpen: false });
+                                    }}
+                                    style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: alertState.type === 'confirm' ? '#ef4444' : '#3b82f6', color: 'white', fontWeight: '600', cursor: 'pointer' }}
+                                >
+                                    {alertState.type === 'confirm' ? 'Confirmar' : 'Aceptar'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
         </div>
     )
 }

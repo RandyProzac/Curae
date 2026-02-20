@@ -100,3 +100,57 @@
   --transition-fast: 150ms var(--ease-spring);
   --transition-normal: 250ms var(--ease-spring);
 }
+
+/* 
+ * DARK MODE THEME OFFSETS
+ */
+.dark {
+  /* Brand Core Strings (Adapted for Dark) */
+  --brand-primary: #a3e6f5;
+  /* Lighter Teal for contrast */
+  --brand-sage: #9cb199;
+  --brand-gold: #fbd382;
+  --brand-beige: #4a3a25;
+  /* Darker tan interpretation */
+  --brand-tan: #635339;
+  --brand-gray: #4b5563;
+
+  /* Functional Mapping */
+  --primary-blue: #38bdf8;
+  --primary-blue-dark: #7dd3fc;
+  --primary-blue-light: #0284c7;
+  --primary-blue-subtle: #1e293b;
+
+  /* Semantic Colors */
+  --success: #a3e635;
+  --success-bg: #14532d;
+  --warning: #facc15;
+  --warning-bg: #78350f;
+  --danger: #ef4444;
+  --danger-bg: #7f1d1d;
+
+  /* Neutral Palette */
+  --white: #000000;
+  --bg-app: #0f172a;
+  /* Deep slate instead of white */
+  --bg-card: #1e293b;
+  /* Slightly lighter slate for cards */
+  --bg-hover: #334155;
+
+  /* Text Colors */
+  --text-primary: #f8fafc;
+  /* Very light slate */
+  --text-secondary: #cbd5e1;
+  --text-tertiary: #94a3b8;
+  --text-inverse: #020617;
+
+  /* Borders */
+  --border-subtle: #334155;
+  --border-focus: var(--brand-gold);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 0 0 1px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.4);
+}

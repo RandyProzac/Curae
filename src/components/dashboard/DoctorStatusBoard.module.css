@@ -1,0 +1,163 @@
+.statusContainer {
+    display: flex;
+    gap: 16px;
+    padding: 10px 0 20px 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+.statusContainer::-webkit-scrollbar {
+    display: none;
+}
+
+.doctorCard {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: white;
+    padding: 16px 20px;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    min-width: 260px;
+    flex-shrink: 0;
+    position: relative;
+    overflow: visible;
+}
+
+/* Busy State */
+.busyAvatar {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.busyRing {
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border-radius: 50%;
+    border: 2px solid;
+    animation: pulseRing 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulseRing {
+    0% {
+        transform: scale(0.9);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1.3);
+        opacity: 0;
+    }
+}
+
+.busyDot {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid white;
+}
+
+/* Free State */
+.freeAvatar {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    flex-shrink: 0;
+}
+
+.zzz {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    font-size: 14px;
+    font-weight: 800;
+    color: #cbd5e1;
+    animation: floatZzz 3s infinite linear;
+    opacity: 0;
+}
+
+.zzz:nth-child(2) {
+    animation-delay: 1.5s;
+    font-size: 10px;
+    right: 5px;
+    top: -10px;
+}
+
+@keyframes floatZzz {
+    0% {
+        transform: translate(0, 0) scale(0.8);
+        opacity: 0;
+    }
+
+    20% {
+        opacity: 1;
+    }
+
+    80% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(15px, -20px) scale(1.2);
+        opacity: 0;
+    }
+}
+
+.info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.statusText {
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.freeText {
+    color: #64748b;
+}
+
+.taskText {
+    font-size: 12px;
+    color: #64748b;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    margin-top: 2px;
+    font-weight: 500;
+}

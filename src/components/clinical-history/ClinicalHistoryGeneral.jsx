@@ -180,15 +180,6 @@ const ClinicalHistoryGeneral = ({ formData, updateField, updateAntecedente, onSa
                                 placeholder="Si es menor de edad"
                             />
                         </div>
-                        <div className={`${styles.formGroup} ${styles.wide}`}>
-                            <label className={styles.label}>Motivo de Consulta</label>
-                            <textarea
-                                className={styles.textarea}
-                                value={formData.motivoConsulta}
-                                onChange={(e) => updateField('motivoConsulta', e.target.value)}
-                                placeholder="Describa el motivo principal de la consulta..."
-                            />
-                        </div>
                     </div>
                 </div>
             </div>
@@ -220,8 +211,8 @@ const ClinicalHistoryGeneral = ({ formData, updateField, updateAntecedente, onSa
                             </label>
                         ))}
                     </div>
-                    <div className={styles.inlineForm}>
-                        <label className={styles.label}>Otros antecedentes</label>
+                    <div className={`${styles.formGroup} ${styles.wide}`} style={{ marginTop: '24px' }}>
+                        <label className={styles.label}>OTROS ANTECEDENTES</label>
                         <input
                             type="text"
                             className={styles.input}

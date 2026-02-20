@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Users,
     Calendar,
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 import styles from './DashboardPage.module.css';
 import { supabase, financeApi, inventoryApi } from '../lib/supabase';
+import DoctorStatusBoard from '../components/dashboard/DoctorStatusBoard';
 
 const QUOTES = [
     "La sonrisa es la mejor carta de presentación. 😁",
@@ -34,6 +36,10 @@ const DashboardPage = () => {
     const [loading, setLoading] = useState(true);
     const [userName, setUserName] = useState('Doctor');
     const [quote, setQuote] = useState('');
+    const navigate = useNavigate();
+
+    const [recentActivity, setRecentActivity] = useState([]);
+    const [upcomingAppointments, setUpcomingAppointments] = useState([]);
 
     useEffect(() => {
         // 1. Get User
@@ -71,11 +77,11 @@ const DashboardPage = () => {
                     .select('id', { count: 'exact', head: true })
                     .eq('date', todayStr);
 
-                // Active Treatments (Scheduled)
+                // Active Treatments (Planes de Tratamiento Activos)
                 const { count: activeCount } = await supabase
-                    .from('appointments')
+                    .from('treatment_plans')
                     .select('id', { count: 'exact', head: true })
-                    .eq('status', 'scheduled');
+                    .eq('status', 'active');
 
                 // Income - Month
                 const date = new Date();
@@ -105,6 +111,45 @@ const DashboardPage = () => {
                     setLowStockItems(lowStock);
                 } catch (err) {
                     console.warn('Inventory error:', err);
+                }
+
+                // --- NEW DATASOURCES ---
+
+                // Upcoming Appointments
+                const now = new Date();
+                const currentTodayStr = now.toISOString().split('T')[0];
+                const currentTimeStr = now.toTimeString().split(' ')[0].slice(0, 5); // "HH:MM"
+
+                const { data: upcomingData } = await supabase
+                    .from('appointments')
+                    .select('*, patient:patients(first_name, last_name), service:services(name)')
+                    .gte('date', currentTodayStr)
+                    .neq('status', 'cancelled')
+                    .order('date', { ascending: true })
+                    .order('start_time', { ascending: true });
+
+                let validUpcoming = [];
+                if (upcomingData) {
+                    validUpcoming = upcomingData.filter(a => {
+                        if (a.date > currentTodayStr) return true;
+                        return a.start_time >= currentTimeStr;
+                    }).slice(0, 4);
+                }
+                setUpcomingAppointments(validUpcoming);
+
+                // Recent High Budget Plans
+                const { data: plansData } = await supabase
+                    .from('treatment_plans')
+                    .select('*, patient:patients(first_name, last_name)')
+                    .order('created_at', { ascending: false })
+                    .limit(20); // Fetch top 20 recent, then sort by budget
+
+                if (plansData) {
+                    const topPlans = plansData.map(plan => {
+                        const total = (plan.budget?.items || []).reduce((acc, item) => acc + (item.unit_price * item.quantity), 0);
+                        return { ...plan, totalBudget: total };
+                    }).sort((a, b) => b.totalBudget - a.totalBudget).slice(0, 4);
+                    setRecentActivity(topPlans);
                 }
 
             } catch (error) {
@@ -155,18 +200,14 @@ const DashboardPage = () => {
         },
     ];
 
-    const recentActivity = [
-        { time: '09:00', title: 'Cita completada: Juan Pérez', desc: 'Limpieza dental profunda', status: 'completed' },
-        { time: '10:30', title: 'Nueva cita agendada', desc: 'Ana García - Evaluación Ortodoncia', status: 'new' },
-        { time: '11:15', title: 'Pago registrado', desc: 'Carlos Morales - Cuota 2/12', status: 'payment' },
-        { time: '12:00', title: 'Recordatorio enviado', desc: 'Confirmación cita mañana: Elena R.', status: 'system' },
-    ];
+    // Removing static recentActivity array
 
     return (
         <div className={styles.dashboardGrid}>
 
             {/* New Welcome Header */}
             <header className={styles.welcomeHeader}>
+                <div className={styles.grain}></div>
                 <div>
                     <h1>Bienvenido, {userName} 👋</h1>
                     <p className={styles.quote}>"{quote}"</p>
@@ -182,6 +223,9 @@ const DashboardPage = () => {
                     </div>
                 </div>
             </header>
+
+            {/* Real-time Doctor Status Animation Strip */}
+            <DoctorStatusBoard />
 
             {/* KPI Cards */}
             <section className={styles.statsRow}>
@@ -205,51 +249,53 @@ const DashboardPage = () => {
             {/* Recent Activity & Quick Actions */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
 
-                {/* Activity Feed */}
+                {/* Activity Feed (High Budget Plans) */}
                 <section>
-                    <h3 className={styles.sectionTitle}>Actividad Reciente</h3>
+                    <h3 className={styles.sectionTitle}>Planes Destacados (Recientes)</h3>
                     <div className={styles.activityCard}>
-                        <ul className={styles.activityList}>
-                            {recentActivity.map((activity, index) => (
-                                <li key={index} className={styles.activityItem}>
-                                    <span className={styles.activityTime}>{activity.time}</span>
-                                    <div className={styles.activityInfo}>
-                                        <span className={styles.activityTitle}>{activity.title}</span>
-                                        <span className={styles.activityDesc}>{activity.desc}</span>
-                                    </div>
-                                    <button className={styles.actionButton}>Ver</button>
-                                </li>
-                            ))}
-                        </ul>
+                        {recentActivity.length === 0 ? (
+                            <p style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>No hay planes de tratamiento activos.</p>
+                        ) : (
+                            <ul className={styles.activityList}>
+                                {recentActivity.map((plan, index) => (
+                                    <li key={index} className={styles.activityItem}>
+                                        <span className={styles.activityTime} style={{ fontSize: '13px', fontWeight: 600 }}>
+                                            {formatCurrency(plan.totalBudget)}
+                                        </span>
+                                        <div className={styles.activityInfo}>
+                                            <span className={styles.activityTitle}>{plan.title || 'Plan General'}</span>
+                                            <span className={styles.activityDesc}>{plan.patient?.first_name} {plan.patient?.last_name}</span>
+                                        </div>
+                                        <button className={styles.actionButton} onClick={() => navigate(`/pacientes/${plan.patient_id}/historia-clinica`)}>Ver</button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
                     </div>
                 </section>
 
-                {/* Próximas Citas (Mock) */}
+                {/* Próximas Citas */}
                 <section>
                     <h3 className={styles.sectionTitle}>Próximas Citas</h3>
                     <div className={styles.activityCard}>
-                        <ul className={styles.activityList}>
-                            <li className={styles.activityItem}>
-                                <div className={styles.iconContainer} style={{ width: 36, height: 36, background: 'var(--brand-beige)', color: 'var(--brand-primary)' }}>
-                                    <Clock size={18} />
-                                </div>
-                                <div className={styles.activityInfo}>
-                                    <span className={styles.activityTitle}>14:00 - Mario Vargas</span>
-                                    <span className={styles.activityDesc}>Extracción Molar</span>
-                                </div>
-                                <button className={styles.actionButton} style={{ color: 'var(--brand-primary)', borderColor: 'var(--brand-primary)' }}>Iniciar</button>
-                            </li>
-                            <li className={styles.activityItem}>
-                                <div className={styles.iconContainer} style={{ width: 36, height: 36, background: '#e0f2fe', color: '#0284c7' }}>
-                                    <Clock size={18} />
-                                </div>
-                                <div className={styles.activityInfo}>
-                                    <span className={styles.activityTitle}>15:30 - Luisa Lane</span>
-                                    <span className={styles.activityDesc}>Control Brackets</span>
-                                </div>
-                                <button className={styles.actionButton}>Detalles</button>
-                            </li>
-                        </ul>
+                        {upcomingAppointments.length === 0 ? (
+                            <p style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>No hay citas próximas programadas para hoy.</p>
+                        ) : (
+                            <ul className={styles.activityList}>
+                                {upcomingAppointments.map((apt, index) => (
+                                    <li key={index} className={styles.activityItem}>
+                                        <div className={styles.iconContainer} style={{ width: 36, height: 36, background: '#e0f2fe', color: '#0284c7' }}>
+                                            <Clock size={18} />
+                                        </div>
+                                        <div className={styles.activityInfo}>
+                                            <span className={styles.activityTitle}>{apt.start_time?.slice(0, 5)} - {apt.patient?.first_name} {apt.patient?.last_name}</span>
+                                            <span className={styles.activityDesc}>{apt.service?.name || apt.motivo || 'Consulta general'}</span>
+                                        </div>
+                                        <button className={styles.actionButton} style={{ color: 'var(--brand-primary)', borderColor: 'var(--brand-primary)' }} onClick={() => navigate('/citas')}>Abrir</button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
                     </div>
                 </section>
 

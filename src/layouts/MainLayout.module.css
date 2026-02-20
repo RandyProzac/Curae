@@ -10,13 +10,13 @@
 /* Sidebar - Clean Light Design */
 .sidebar {
     width: 220px;
-    background-color: #ffffff;
+    background-color: var(--bg-card);
     color: var(--text-primary);
     display: flex;
     flex-direction: column;
     padding: var(--spacing-lg) 0;
     transition: width var(--transition-normal);
-    border-right: 1px solid #e2e8f0;
+    border-right: 1px solid var(--border-subtle);
     z-index: var(--z-fixed);
 }
 
@@ -31,7 +31,7 @@
 .logoText {
     font-size: 1.5rem;
     font-weight: var(--weight-bold);
-    color: #1e293b;
+    color: var(--text-primary);
     letter-spacing: -0.02em;
 }
 
@@ -49,7 +49,7 @@
     align-items: center;
     gap: var(--spacing-md);
     padding: var(--spacing-md) var(--spacing-md);
-    color: #64748b;
+    color: var(--text-secondary);
     text-decoration: none;
     border-radius: var(--radius-md);
     transition: all var(--transition-fast);
@@ -58,8 +58,8 @@
 }
 
 .navItem:hover {
-    color: #1e293b;
-    background-color: #f1f5f9;
+    color: var(--text-primary);
+    background-color: var(--bg-hover);
 }
 
 /* Active state - Curae Teal */
@@ -77,7 +77,7 @@
 
 .sidebarFooter {
     padding: var(--spacing-lg) var(--spacing-md);
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid var(--border-subtle);
     margin-top: auto;
 }
 
@@ -87,7 +87,7 @@
     gap: var(--spacing-md);
     width: 100%;
     padding: var(--spacing-md);
-    color: #64748b;
+    color: var(--text-secondary);
     background: none;
     border: none;
     border-radius: var(--radius-md);
@@ -97,8 +97,8 @@
 }
 
 .logoutBtn:hover {
-    color: #dc2626;
-    background-color: #fef2f2;
+    color: var(--danger);
+    background-color: var(--danger-bg);
 }
 
 /* Main Content Area */
@@ -139,6 +139,24 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-lg);
+}
+
+.themeToggle {
+    background: var(--bg-hover);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.themeToggle:hover {
+    background: var(--border-subtle);
 }
 
 .userInfo {

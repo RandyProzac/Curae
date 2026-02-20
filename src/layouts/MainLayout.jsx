@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
 import {
@@ -11,7 +11,10 @@ import {
     Menu,
     X,
     Wallet,
-    ShoppingCart
+    ShoppingCart,
+    Plug,
+    Sun,
+    Moon
 } from 'lucide-react';
 import styles from './MainLayout.module.css';
 
@@ -19,6 +22,25 @@ const MainLayout = () => {
     const { user, logout } = useAuth();
     const location = useLocation();
     const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    // Theme Management
+    const [theme, setTheme] = useState(() => {
+        const savedTheme = localStorage.getItem('curaeTheme');
+        // By default prefer light unless user specifically chose dark
+        return savedTheme ? savedTheme : 'light';
+    });
+
+    useEffect(() => {
+        const root = document.documentElement;
+        if (theme === 'dark') {
+            root.classList.add('dark');
+        } else {
+            root.classList.remove('dark');
+        }
+        localStorage.setItem('curaeTheme', theme);
+    }, [theme]);
+
+    const toggleTheme = () => setTheme(t => t === 'light' ? 'dark' : 'light');
 
     // Dynamically set page title based on current route
     const getPageTitle = (pathname) => {
@@ -31,6 +53,7 @@ const MainLayout = () => {
         if (pathname.includes('/odontograma')) return 'Odontograma Clínico';
         if (pathname.includes('/reportes')) return 'Reportes y Métricas';
         if (pathname.includes('/configuracion')) return 'Configuración';
+        if (pathname.includes('/integraciones')) return 'Integraciones';
         return 'Curae Online';
     };
 
@@ -43,6 +66,7 @@ const MainLayout = () => {
         { path: '/finanzas', icon: <Wallet size={20} />, label: 'Finanzas' },
         { path: '/inventario', icon: <ShoppingCart size={20} />, label: 'Inventario' },
         { path: '/configuracion', icon: <Settings size={20} />, label: 'Configuración' },
+        { path: '/integraciones', icon: <Plug size={20} />, label: 'Integraciones' },
     ];
 
     const handleNavClick = () => {
@@ -111,6 +135,14 @@ const MainLayout = () => {
                     </div>
 
                     <div className={styles.headerRight}>
+                        <button
+                            className={styles.themeToggle}
+                            onClick={toggleTheme}
+                            aria-label="Toggle Dark Mode"
+                            title="Cambiar tema"
+                        >
+                            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                        </button>
                         <div className={styles.userInfo}>
                             <span className={styles.userName}>{user?.name}</span>
                             <span className={styles.userRole}>{user?.role === 'ADMIN' ? 'Administrador' : 'Doctor'}</span>

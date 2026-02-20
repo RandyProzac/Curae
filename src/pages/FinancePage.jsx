@@ -72,7 +72,9 @@ const TodayCard = ({ title, value, type }) => {
 const FinancePage = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
-    const [currentDate, setCurrentDate] = useState(new Date());
+    const [selectedDay, setSelectedDay] = useState(new Date());
+    const [selectedMonth, setSelectedMonth] = useState(new Date());
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
     // -- DATA STATE --
     const [todayMetrics, setTodayMetrics] = useState({ income: 0, expenses: 0, balance: 0 });
@@ -90,42 +92,37 @@ const FinancePage = () => {
     const loadData = React.useCallback(async () => {
         setLoading(true);
         try {
-            // Dates for the selected period
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
-            const startOfPeriod = new Date(year, month, 1).toISOString();
-            const endOfPeriod = new Date(year, month + 1, 0, 23, 59, 59, 999).toISOString();
+            // 1. Daily Metrics (Based on selectedDay)
+            const dayStart = new Date(selectedDay);
+            dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(selectedDay);
+            dayEnd.setHours(23, 59, 59, 999);
 
-            // Real-time "Today" metrics only if viewing current month
-            const isCurrentMonth = year === new Date().getFullYear() && month === new Date().getMonth();
-            let periodMetricsStart = startOfPeriod;
-            let periodMetricsEnd = endOfPeriod;
-
-            if (isCurrentMonth) {
-                periodMetricsStart = new Date().toISOString().split('T')[0] + 'T00:00:00.000Z';
-                periodMetricsEnd = new Date().toISOString().split('T')[0] + 'T23:59:59.999Z';
-            }
-
-            // 1. Period/Today Metrics
-            const [periodIncome, periodExpensesList] = await Promise.all([
-                financeApi.getIncomeByPeriod(periodMetricsStart, periodMetricsEnd),
-                expensesApi.getByPeriod(periodMetricsStart, periodMetricsEnd)
+            const [dayIncome, dayExpensesList] = await Promise.all([
+                financeApi.getIncomeByPeriod(dayStart.toISOString(), dayEnd.toISOString()),
+                expensesApi.getByPeriod(dayStart.toISOString(), dayEnd.toISOString())
             ]);
-            const periodExpTotal = periodExpensesList.reduce((acc, e) => acc + (parseFloat(e.amount) || 0), 0);
+            const dayTotalExp = dayExpensesList.reduce((acc, e) => acc + (parseFloat(e.amount) || 0), 0);
 
-            // 2. Month Summary & Trend
-            const [summary, trend] = await Promise.all([
-                cashFlowApi.getSummary(startOfPeriod, endOfPeriod),
-                cashFlowApi.getMonthlyTrend(year)
+            // 2. Monthly Summary (Based on selectedMonth)
+            const monthYear = selectedMonth.getFullYear();
+            const monthIdx = selectedMonth.getMonth();
+            const startOfMonth = new Date(monthYear, monthIdx, 1).toISOString();
+            const endOfMonth = new Date(monthYear, monthIdx + 1, 0, 23, 59, 59, 999).toISOString();
+
+            const [summary, docRev, patientStats] = await Promise.all([
+                cashFlowApi.getSummary(startOfMonth, endOfMonth),
+                financeApi.getRevenueByDoctor(startOfMonth, endOfMonth),
+                financeApi.getPatientFinanceStats(0, startOfMonth, endOfMonth)
             ]);
 
-            // 3. Inventory Impact (Always current status)
+            // 3. Annual Trend (Based on selectedYear)
+            const trend = await cashFlowApi.getMonthlyTrend(selectedYear);
+
+            // 4. Inventory Impact (Always current status)
             const products = await inventoryApi.getProducts();
             const totalInvValue = products.reduce((acc, p) => acc + (p.cost * p.stock), 0);
             const lowStockItems = products.filter(p => p.stock <= p.min_stock);
-
-            // 4. Revenue by Doctor (Filtered by period)
-            const docRev = await financeApi.getRevenueByDoctor(startOfPeriod, endOfPeriod);
 
             // 5. Generate Alerts
             const newAlerts = [];
@@ -141,36 +138,33 @@ const FinancePage = () => {
                 newAlerts.push({
                     type: 'danger',
                     title: 'Flujo de Caja Negativo',
-                    message: isCurrentMonth ? 'Gastos superan ingresos este mes.' : 'Gastos superaron ingresos en este periodo.',
+                    message: 'Gastos superan ingresos en este periodo.',
                     id: 'cashflow'
                 });
             }
 
             // Set State
             setTodayMetrics({
-                income: periodIncome,
-                expenses: periodExpTotal,
-                balance: periodIncome - periodExpTotal,
-                isCurrentMonth // Flag for UI labeling
+                income: dayIncome,
+                expenses: dayTotalExp,
+                balance: dayIncome - dayTotalExp,
+                isToday: selectedDay.toDateString() === new Date().toDateString()
             });
             setMonthSummary(summary);
             setTrendData(trend);
             setInventoryValue(totalInvValue);
-            setRevenueByDoctor(docRev.slice(0, 5)); // Top 5
+            setRevenueByDoctor(docRev.slice(0, 5));
             setTopExpenses(summary.expensesByCategory || []);
             setAlerts(newAlerts);
-
-            // 6. Top Patients (Filtered by period)
-            const allStats = await financeApi.getPatientFinanceStats(0, startOfPeriod, endOfPeriod);
-            setAllPatientsStats(allStats);
-            setTopPatients(allStats.slice(0, 10));
+            setAllPatientsStats(patientStats);
+            setTopPatients(patientStats.slice(0, 10));
 
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
         } finally {
             setLoading(false);
         }
-    }, [currentDate]);
+    }, [selectedDay, selectedMonth, selectedYear]);
 
     // Initial Load
     useEffect(() => {
@@ -181,11 +175,17 @@ const FinancePage = () => {
     const formatCurrency = (val) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', minimumFractionDigits: 0 }).format(val || 0);
 
     // Handlers
-    const handlePrevMonth = () => {
-        setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+    const handleDayChange = (e) => {
+        setSelectedDay(new Date(e.target.value + 'T12:00:00'));
     };
-    const handleNextMonth = () => {
-        setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+
+    const handleMonthChange = (e) => {
+        const [year, month] = e.target.value.split('-');
+        setSelectedMonth(new Date(parseInt(year), parseInt(month) - 1, 1));
+    };
+
+    const handleYearChange = (e) => {
+        setSelectedYear(parseInt(e.target.value));
     };
 
     return (
@@ -197,34 +197,8 @@ const FinancePage = () => {
                     <p>Visión estratégíca de tu consultorio.</p>
                 </div>
                 <div className={styles.controls}>
-                    <div className={styles.navGroup}>
-                        <button className={styles.navArrow} onClick={handlePrevMonth}>&lt;</button>
-                        <select
-                            className={styles.periodSelect}
-                            value={currentDate.getMonth()}
-                            onChange={(e) => setCurrentDate(new Date(currentDate.getFullYear(), parseInt(e.target.value), 1))}
-                        >
-                            {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m, i) => (
-                                <option key={i} value={i}>{m}</option>
-                            ))}
-                        </select>
-                        <button className={styles.navArrow} onClick={handleNextMonth}>&gt;</button>
-                    </div>
-
-                    <div className={styles.navGroup}>
-                        <select
-                            className={styles.periodSelect}
-                            value={currentDate.getFullYear()}
-                            onChange={(e) => setCurrentDate(new Date(parseInt(e.target.value), currentDate.getMonth(), 1))}
-                        >
-                            {Array.from({ length: 15 }, (_, i) => new Date().getFullYear() - 10 + i).map(y => (
-                                <option key={y} value={y}>{y}</option>
-                            ))}
-                        </select>
-                    </div>
-
                     <button className={styles.addExpenseBtn} onClick={() => navigate('/gastos')}>
-                        <ShoppingCart size={16} /> <span>Gastos</span>
+                        <ShoppingCart size={16} /> <span>Gestionar Gastos</span>
                     </button>
                 </div>
             </header>
@@ -235,30 +209,48 @@ const FinancePage = () => {
                 <div className={styles.grid}>
 
                     <section className={styles.sectionToday}>
+                        <div className={styles.todayDateBadge}>
+                            <span>Detalle del día:</span>
+                            <input
+                                type="date"
+                                value={selectedDay.toISOString().split('T')[0]}
+                                onChange={handleDayChange}
+                                className={styles.inlineDatePicker}
+                            />
+                        </div>
                         <TodayCard
-                            title={todayMetrics.isCurrentMonth ? "Ingreso Hoy" : "Ingreso Total"}
+                            title={todayMetrics.isToday ? "Ingreso Hoy" : "Ingreso del Día"}
                             value={formatCurrency(todayMetrics.income)}
                             type="income"
                         />
                         <TodayCard
-                            title={todayMetrics.isCurrentMonth ? "Gasto Hoy" : "Gasto Total"}
+                            title={todayMetrics.isToday ? "Gasto Hoy" : "Gasto del Día"}
                             value={formatCurrency(todayMetrics.expenses)}
                             type="expense"
                         />
                         <TodayCard
-                            title={todayMetrics.isCurrentMonth ? "Balance Diario" : "Balance Total"}
+                            title={todayMetrics.isToday ? "Balance Diario" : "Balance del Día"}
                             value={formatCurrency(todayMetrics.balance)}
                             type="balance"
                         />
                     </section>
 
                     {/* --- 2. KPIS MENSUALES --- */}
+                    <div className={styles.todayDateBadge} style={{ marginTop: '12px' }}>
+                        <span>Resumen Mensual:</span>
+                        <input
+                            type="month"
+                            value={`${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}`}
+                            onChange={handleMonthChange}
+                            className={styles.inlineDatePicker}
+                        />
+                    </div>
                     <KpiCard
                         title="Facturación del Periodo"
                         value={formatCurrency(monthSummary.income)}
                         icon={<Activity size={20} />}
                         colorClass="iconBlue"
-                        subtext={todayMetrics.isCurrentMonth ? "acumulado este mes" : `total en ${currentDate.toLocaleDateString('es-ES', { month: 'long' })}`}
+                        subtext={todayMetrics.isToday ? "acumulado hoy" : `total en ${selectedDay.toLocaleDateString('es-ES')}`}
                         trend="up"
                         trendValue="Ingresos"
                     />
@@ -293,8 +285,19 @@ const FinancePage = () => {
                     <div className={styles.chartSection}>
                         <div className={styles.chartHeader}>
                             <div className={styles.chartTitle}>
-                                <h3>Flujo de Caja Anual</h3>
-                                <p>Comparativa Ingresos vs Egresos {currentDate.getFullYear()}</p>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <h3>Flujo de Caja Anual</h3>
+                                    <select
+                                        value={selectedYear}
+                                        onChange={handleYearChange}
+                                        className={styles.inlineYearSelect}
+                                    >
+                                        {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i).map(y => (
+                                            <option key={y} value={y}>{y}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <p>Comparativa Ingresos vs Egresos del año seleccionado</p>
                             </div>
                             <div style={{ display: 'flex', gap: 12 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem' }}>

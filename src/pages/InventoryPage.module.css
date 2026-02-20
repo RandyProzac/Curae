@@ -1,0 +1,371 @@
+/* InventoryPage.module.css */
+.container {
+    padding: 24px;
+    background: #f8fafc;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* --- Header --- */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 8px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.titleGroup {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.titleIcon {
+    padding: 10px;
+    background: #eff6ff;
+    border-radius: 12px;
+    color: #3b82f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.titleText h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.025em;
+}
+
+.titleText p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #64748b;
+}
+
+.headerActions {
+    display: flex;
+    gap: 12px;
+}
+
+/* --- Buttons --- */
+.addButton,
+.secondaryButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 18px;
+    font-weight: 600;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.addButton {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
+}
+
+.addButton:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 12px -2px rgba(59, 130, 246, 0.3);
+}
+
+.secondaryButton {
+    background: white;
+    color: #334155;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.secondaryButton:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+/* --- KPI Section --- */
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+}
+
+.kpiCard {
+    background: white;
+    padding: 20px;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.kpiLabel {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.kpiValue {
+    font-size: 1.75rem;
+    font-weight: 800;
+}
+
+/* --- Alert --- */
+.alert {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    padding: 14px 20px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.alertText {
+    color: #9a3412;
+    font-size: 0.95rem;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+/* --- Content --- */
+.contentArea {
+    flex: 1;
+}
+
+.tableWrapper {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px;
+}
+
+.table th {
+    text-align: left;
+    padding: 16px 20px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid #f1f5f9;
+}
+
+.table td {
+    padding: 16px 20px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.95rem;
+    color: #1e293b;
+    vertical-align: middle;
+}
+
+.table tr:hover td {
+    background: #fcfdfe;
+}
+
+/* Status Badges */
+.stockBadge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.categoryBadge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+
+.iconBtn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e2e8f0;
+    background: white;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.iconBtn:hover {
+    color: #3b82f6;
+    border-color: #3b82f6;
+    background: #eff6ff;
+}
+
+/* --- Card List (Mobile) --- */
+.cardList {
+    display: none;
+    /* Hidden by default, shown on mobile */
+    flex-direction: column;
+    gap: 16px;
+}
+
+.productCard {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.productMainInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.productName {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.productSku {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-family: monospace;
+}
+
+.cardDetails {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 12px 0;
+    border-top: 1px solid #f1f5f9;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.detailItem {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.detailLabel {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+}
+
+.detailValue {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+.cardActions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* --- Mobile Queries --- */
+@media (max-width: 768px) {
+    .container {
+        padding: 16px;
+        gap: 20px;
+    }
+
+    .header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .headerActions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .addButton,
+    .secondaryButton {
+        width: 100%;
+        padding: 12px;
+        font-size: 1rem;
+    }
+
+    .statsGrid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .kpiCard {
+        padding: 16px;
+    }
+
+    .tableWrapper {
+        display: none;
+        /* Hide table on mobile */
+    }
+
+    .cardList {
+        display: flex;
+        /* Show card list on mobile */
+    }
+
+    /* Floating Add Button for Mobile */
+    .mobileFab {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 56px;
+        height: 56px;
+        border-radius: 28px;
+        background: #3b82f6;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        border: none;
+        z-index: 100;
+        cursor: pointer;
+    }
+}

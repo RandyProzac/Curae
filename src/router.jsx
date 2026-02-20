@@ -14,6 +14,7 @@ import FinancePage from './pages/FinancePage';
 import InventoryPage from './pages/InventoryPage';
 import ExpensesPage from './pages/ExpensesPage';
 import TreatmentEvolutionPage from './pages/TreatmentEvolutionPage';
+import IntegrationsPage from './pages/IntegrationsPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
@@ -69,6 +70,7 @@ const AppRouter = () => {
                 <Route path="gastos" element={<ExpensesPage />} />
                 <Route path="doctores" element={<DoctorsPage />} />
                 <Route path="configuracion" element={<div>Módulo Configuración (Próximamente)</div>} />
+                <Route path="integraciones" element={<IntegrationsPage />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
