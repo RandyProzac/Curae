@@ -19,7 +19,7 @@ import { supabase, doctorsApi, servicesApi, patientsApi, appointmentsApi } from 
 import TimeCombobox from '../components/appointments/TimeCombobox';
 import ServiceSelector from '../components/appointments/ServiceSelector';
 import { APPOINTMENT_STATUS, getStatusConfig } from '../utils/constants';
-import { createGoogleCalendarEvent, fetchExternalEvents } from '../services/googleCalendarService';
+import { createGoogleCalendarEvent, fetchExternalEvents, getValidGoogleToken } from '../services/googleCalendarService';
 
 // Fallback data
 const fallbackDoctors = [
@@ -201,7 +201,7 @@ const AppointmentsPage = () => {
 
                 // --- FETCH GOOGLE CALENDAR EXTERNAL EVENTS ---
                 let allExternalEvents = [];
-                const googleToken = localStorage.getItem('google_access_token');
+                const googleToken = await getValidGoogleToken();
                 if (googleToken) {
                     try {
                         const now = new Date();
@@ -685,7 +685,7 @@ const AppointmentsPage = () => {
             }
 
             // --- GOOGLE CALENDAR SYNC (Background) ---
-            const googleToken = localStorage.getItem('google_access_token');
+            const googleToken = await getValidGoogleToken();
             if (googleToken && savedData) {
                 // Find the associated doctor
                 const doctorToSync = doctorsData.find(d => d.id === newAppointment.doctorId) || null;

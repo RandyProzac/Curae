@@ -71,6 +71,82 @@ export const exchangeGoogleCodeForTokens = async (authCode) => {
 };
 
 /**
+ * Retrieves a valid Google Access Token globally for the clinic.
+ * It checks Supabase. If the token is expired but a refresh_token exists,
+ * it will automatically exchange it for a new access_token.
+ */
+export const getValidGoogleToken = async () => {
+    try {
+        // 1. Fetch Integration from DB
+        const { data: integ } = await supabase
+            .from('integrations')
+            .select('*')
+            .eq('provider', 'google_calendar')
+            .maybeSingle();
+
+        if (!integ || integ.status !== 'connected' || !integ.access_token) {
+            return null; // Not connected globally
+        }
+
+        // 2. Check Expiry
+        const now = Date.now();
+        // Give a 5-minute buffer before actual expiry to refresh
+        if (integ.expiry_date && (now + 5 * 60 * 1000) > integ.expiry_date) {
+            console.log("Global Google Token expired/expiring soon. Refreshing via Supabase...");
+
+            if (!integ.refresh_token) {
+                console.error("Expired but no refresh_token stored. Must re-authenticate manually.");
+                return null;
+            }
+
+            // 3. Perform Refresh
+            const payload = new URLSearchParams({
+                client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+                client_secret: import.meta.env.VITE_GOOGLE_CLIENT_SECRET,
+                refresh_token: integ.refresh_token,
+                grant_type: 'refresh_token',
+            });
+
+            const res = await fetch('https://oauth2.googleapis.com/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: payload.toString()
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                console.error("Refresh failed:", data);
+                return null;
+            }
+
+            const newExpiry = Date.now() + (data.expires_in * 1000);
+
+            // 4. Save new access_token and expiry back to DB
+            const { error: updateError } = await supabase
+                .from('integrations')
+                .update({
+                    access_token: data.access_token,
+                    // sometimes google doesn't return a new refresh token, keep old one if so
+                    refresh_token: data.refresh_token || integ.refresh_token,
+                    expiry_date: newExpiry,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', integ.id);
+
+            if (updateError) console.error("Could not update token in DB:", updateError);
+
+            return data.access_token;
+        }
+
+        // Token is still valid!
+        return integ.access_token;
+    } catch (err) {
+        console.error("Error in getValidGoogleToken:", err);
+        return null;
+    }
+};
+
+/**
  * Ensures a Doctor has a specific sub-calendar in the master Google Account.
  * If not, it creates it and updates the doctor's record in Supabase.
  */
