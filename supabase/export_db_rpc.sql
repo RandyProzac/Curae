@@ -11,7 +11,6 @@ BEGIN
     'patients', (SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) FROM patients t),
     'doctors', (SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) FROM doctors t),
     'services', (SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) FROM services t),
-    'inventory', (SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) FROM inventory t),
     'appointments', (SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) FROM appointments t),
     'events', (SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) FROM events t),
     'treatment_plans', (SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) FROM treatment_plans t),

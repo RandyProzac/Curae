@@ -12,7 +12,7 @@ BEGIN
   TRUNCATE TABLE 
     events, appointments, treatment_plans, budgets, payments, 
     cash_register, clinical_notes, clinical_files, odontogram_snapshots, integrations,
-    patients, doctors, services, inventory 
+    patients, doctors, services
   RESTART IDENTITY CASCADE;
 
   -- 2. INSERT NEW DATA FROM JSON
@@ -26,11 +26,6 @@ BEGIN
   IF data->>'services' IS NOT NULL THEN
     INSERT INTO services
     SELECT * FROM json_populate_recordset(null::services, (data->>'services')::json);
-  END IF;
-
-  IF data->>'inventory' IS NOT NULL THEN
-    INSERT INTO inventory
-    SELECT * FROM json_populate_recordset(null::inventory, (data->>'inventory')::json);
   END IF;
 
   IF data->>'patients' IS NOT NULL THEN
