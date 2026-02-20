@@ -11,7 +11,7 @@ BEGIN
   -- 1. WIPE CURRENT DATA (in correct order to respect constraints if any remain active)
   TRUNCATE TABLE 
     events, appointments, treatment_plans, budgets, payments, 
-    cash_register, clinical_notes, clinical_files, odontogram_snapshots, integrations,
+    clinical_notes, clinical_files, odontogram_snapshots, integrations,
     patients, doctors, services
   RESTART IDENTITY CASCADE;
 
@@ -57,11 +57,6 @@ BEGIN
   IF data->>'payments' IS NOT NULL THEN
     INSERT INTO payments
     SELECT * FROM json_populate_recordset(null::payments, (data->>'payments')::json);
-  END IF;
-
-  IF data->>'cash_register' IS NOT NULL THEN
-    INSERT INTO cash_register
-    SELECT * FROM json_populate_recordset(null::cash_register, (data->>'cash_register')::json);
   END IF;
 
   IF data->>'clinical_notes' IS NOT NULL THEN
