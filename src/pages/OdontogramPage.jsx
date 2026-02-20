@@ -115,7 +115,8 @@ const OdontogramPage = () => {
             gap: '24px',
             height: '100%',
             padding: '0',
-            overflow: 'hidden',
+            overflowX: 'auto', // Force horizontal scroll if needed
+            overflowY: 'hidden',
         },
         toolbarColumn: {
             width: isMobile ? '100%' : '320px',
@@ -126,12 +127,12 @@ const OdontogramPage = () => {
         },
         mainColumn: {
             flex: 1,
-            overflow: 'auto',
-            background: 'white',
+            overflow: 'auto', // Keeps its own internal scroll
+            background: 'var(--bg-card)', // Adopt Theme variable while we're here
             borderRadius: '20px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04)',
+            boxShadow: 'var(--shadow-md)',
             padding: isMobile ? '12px' : '20px 24px',
-            minWidth: isMobile ? '600px' : 'auto', // Enable horizontal scroll on mobile
+            minWidth: '800px', // Prevent the odontogram from ever squishing
         },
     };
 

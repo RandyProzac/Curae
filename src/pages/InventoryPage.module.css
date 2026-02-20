@@ -1,7 +1,7 @@
 /* InventoryPage.module.css */
 .container {
     padding: 24px;
-    background: #f8fafc;
+    background: var(--bg-app);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -27,9 +27,9 @@
 
 .titleIcon {
     padding: 10px;
-    background: #eff6ff;
+    background: var(--primary-blue-subtle);
     border-radius: 12px;
-    color: #3b82f6;
+    color: var(--primary-blue);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -39,14 +39,14 @@
     margin: 0;
     font-size: 1.5rem;
     font-weight: 800;
-    color: #0f172a;
+    color: var(--text-primary);
     letter-spacing: -0.025em;
 }
 
 .titleText p {
     margin: 0;
     font-size: 0.9rem;
-    color: #64748b;
+    color: var(--text-secondary);
 }
 
 .headerActions {
@@ -71,10 +71,10 @@
 }
 
 .addButton {
-    background: #3b82f6;
+    background: var(--primary-blue);
     color: white;
     border: none;
-    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
+    box-shadow: 0 4px 6px -1px var(--primary-blue-subtle);
 }
 
 .addButton:hover {
@@ -84,15 +84,15 @@
 }
 
 .secondaryButton {
-    background: white;
-    color: #334155;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-sm);
 }
 
 .secondaryButton:hover {
-    background: #f8fafc;
-    border-color: #cbd5e1;
+    background: var(--bg-hover);
+    border-color: var(--primary-blue);
 }
 
 /* --- KPI Section --- */
@@ -103,10 +103,10 @@
 }
 
 .kpiCard {
-    background: white;
+    background: var(--bg-card);
     padding: 20px;
     border-radius: 16px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border-subtle);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     display: flex;
     flex-direction: column;
@@ -116,7 +116,7 @@
 .kpiLabel {
     font-size: 0.85rem;
     font-weight: 600;
-    color: #64748b;
+    color: var(--text-tertiary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
@@ -124,6 +124,7 @@
 .kpiValue {
     font-size: 1.75rem;
     font-weight: 800;
+    color: var(--text-primary);
 }
 
 /* --- Alert --- */
@@ -150,9 +151,9 @@
 }
 
 .tableWrapper {
-    background: white;
+    background: var(--bg-card);
     border-radius: 16px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border-subtle);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -167,25 +168,25 @@
 .table th {
     text-align: left;
     padding: 16px 20px;
-    background: #f8fafc;
-    color: #475569;
+    background: var(--bg-hover);
+    color: var(--text-secondary);
     font-size: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    border-bottom: 2px solid #f1f5f9;
+    border-bottom: 2px solid var(--border-subtle);
 }
 
 .table td {
     padding: 16px 20px;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--border-subtle);
     font-size: 0.95rem;
-    color: #1e293b;
+    color: var(--text-primary);
     vertical-align: middle;
 }
 
 .table tr:hover td {
-    background: #fcfdfe;
+    background: var(--bg-hover);
 }
 
 /* Status Badges */
@@ -204,9 +205,9 @@
     border-radius: 8px;
     font-size: 0.75rem;
     font-weight: 600;
-    background: #f1f5f9;
-    color: #475569;
-    border: 1px solid #e2e8f0;
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
 }
 
 .iconBtn {
@@ -216,17 +217,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid #e2e8f0;
-    background: white;
-    color: #64748b;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-card);
+    color: var(--text-secondary);
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .iconBtn:hover {
-    color: #3b82f6;
-    border-color: #3b82f6;
-    background: #eff6ff;
+    color: var(--primary-blue);
+    border-color: var(--primary-blue);
+    background: var(--primary-blue-subtle);
 }
 
 /* --- Card List (Mobile) --- */
@@ -238,9 +239,9 @@
 }
 
 .productCard {
-    background: white;
+    background: var(--bg-card);
     border-radius: 16px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border-subtle);
     padding: 20px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     display: flex;
@@ -263,12 +264,12 @@
 .productName {
     font-size: 1.1rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--text-primary);
 }
 
 .productSku {
     font-size: 0.8rem;
-    color: #64748b;
+    color: var(--text-secondary);
     font-family: monospace;
 }
 
@@ -277,8 +278,8 @@
     grid-template-columns: 1fr 1fr;
     gap: 12px;
     padding: 12px 0;
-    border-top: 1px solid #f1f5f9;
-    border-bottom: 1px solid #f1f5f9;
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 .detailItem {
@@ -290,14 +291,14 @@
 .detailLabel {
     font-size: 0.7rem;
     font-weight: 600;
-    color: #94a3b8;
+    color: var(--text-tertiary);
     text-transform: uppercase;
 }
 
 .detailValue {
     font-size: 0.9rem;
     font-weight: 600;
-    color: #334155;
+    color: var(--text-primary);
 }
 
 .cardActions {

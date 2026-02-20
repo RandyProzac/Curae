@@ -19,6 +19,7 @@ import { supabase, doctorsApi, servicesApi, patientsApi, appointmentsApi } from 
 import TimeCombobox from '../components/appointments/TimeCombobox';
 import ServiceSelector from '../components/appointments/ServiceSelector';
 import { APPOINTMENT_STATUS, getStatusConfig } from '../utils/constants';
+import { createGoogleCalendarEvent, fetchExternalEvents } from '../services/googleCalendarService';
 
 // Fallback data
 const fallbackDoctors = [
@@ -197,14 +198,38 @@ const AppointmentsPage = () => {
                 setServicesData(servsRes.data || []);
                 setPatientsData(patsRes.data || []);
                 setAppointments(finalAppointments);
-                setEvents(finalEvents);
+
+                // --- FETCH GOOGLE CALENDAR EXTERNAL EVENTS ---
+                let allExternalEvents = [];
+                const googleToken = localStorage.getItem('google_access_token');
+                if (googleToken) {
+                    try {
+                        const now = new Date();
+                        const timeMin = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                        const timeMax = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+
+                        // Fetch concurrently for all doctors
+                        const fetchPromises = finalDoctors.map(doc => fetchExternalEvents(doc, googleToken, timeMin, timeMax));
+                        const results = await Promise.all(fetchPromises);
+                        results.forEach(res => {
+                            if (res && res.length > 0) {
+                                allExternalEvents = [...allExternalEvents, ...res];
+                            }
+                        });
+                    } catch (gErr) {
+                        console.error("Error syncing Google Events during load", gErr);
+                    }
+                }
+
+                const mergedEvents = [...finalEvents, ...allExternalEvents];
+                setEvents(mergedEvents);
 
                 sessionCache = {
                     doctors: finalDoctors,
                     services: servsRes.data || [],
                     patients: patsRes.data || [],
                     appointments: finalAppointments,
-                    events: finalEvents,
+                    events: mergedEvents,
                     timestamp: Date.now()
                 };
 
@@ -659,6 +684,30 @@ const AppointmentsPage = () => {
                 showAlert('Cita guardada correctamente', 'Éxito', 'alert');
             }
 
+            // --- GOOGLE CALENDAR SYNC (Background) ---
+            const googleToken = localStorage.getItem('google_access_token');
+            if (googleToken && savedData) {
+                // Find the associated doctor
+                const doctorToSync = doctorsData.find(d => d.id === newAppointment.doctorId) || null;
+
+                // We don't block the UI, handle it asynchronously
+                createGoogleCalendarEvent({
+                    id: savedData.id,
+                    patient_name: newAppointment.newPatientName || selectedAppointment?.patient || 'Paciente',
+                    date: savedData.date,
+                    start_time: savedData.start_time,
+                    end_time: savedData.end_time,
+                    motivo: savedData.motivo || savedData.service?.name,
+                    notes: savedData.notes
+                }, doctorToSync, googleToken).then(res => {
+                    if (res.success) {
+                        console.log("Successfully synced with Google Calendar", res.eventId);
+                    } else {
+                        console.warn("Google Sync Failed", res.error);
+                    }
+                });
+            }
+
             // Sync State
             const formatted = {
                 id: savedData.id,
@@ -1035,34 +1084,36 @@ const AppointmentsPage = () => {
 
             {/* Grid Content */}
             {viewMode === 'month' ? (
-                /* MONTH VIEW (Unchanged) */
-                <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
-                        {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(d => (
-                            <div key={d} style={styles.dayHeader}>{d}</div>
-                        ))}
-                    </div>
-                    <div style={styles.monthGrid}>
-                        {getDaysInMonth(currentDate).map((date, idx) => (
-                            <div key={idx} style={styles.dayCell} onClick={() => { setCurrentDate(date); setViewMode('day'); }}>
-                                <div style={styles.dayNum(isToday(date))}>{date.getDate()}</div>
-                                {getAppointmentsForDate(date).slice(0, 3).map(apt => (
-                                    <div key={apt.id} style={styles.aptChip(apt.type === 'event' ? apt.color : getDoctorColor(apt.doctorId))} onClick={(e) => { e.stopPropagation(); setSelectedAppointment(apt); }}>
-                                        {apt.type === 'appointment' && (
-                                            <span style={{ marginRight: '4px', fontSize: '10px' }}>
-                                                {getStatusConfig(apt.status).icon}
-                                            </span>
-                                        )}
-                                        <span style={{ fontWeight: '600' }}>{apt.startTime}</span> {apt.type === 'event' ? apt.title : apt.patient}
-                                    </div>
-                                ))}
-                                {getAppointmentsForDate(date).length > 3 && (
-                                    <div style={{ fontSize: '10px', color: '#64748b', paddingLeft: '4px' }}>
-                                        + {getAppointmentsForDate(date).length - 3} más
-                                    </div>
-                                )}
-                            </div>
-                        ))}
+                /* MONTH VIEW (Scrollable) */
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowX: 'auto' }}>
+                    <div style={{ minWidth: '900px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
+                            {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(d => (
+                                <div key={d} style={styles.dayHeader}>{d}</div>
+                            ))}
+                        </div>
+                        <div style={styles.monthGrid}>
+                            {getDaysInMonth(currentDate).map((date, idx) => (
+                                <div key={idx} style={styles.dayCell} onClick={() => { setCurrentDate(date); setViewMode('day'); }}>
+                                    <div style={styles.dayNum(isToday(date))}>{date.getDate()}</div>
+                                    {getAppointmentsForDate(date).slice(0, 3).map(apt => (
+                                        <div key={apt.id} style={styles.aptChip(apt.type === 'event' ? apt.color : getDoctorColor(apt.doctorId))} onClick={(e) => { e.stopPropagation(); setSelectedAppointment(apt); }}>
+                                            {apt.type === 'appointment' && (
+                                                <span style={{ marginRight: '4px', fontSize: '10px' }}>
+                                                    {getStatusConfig(apt.status).icon}
+                                                </span>
+                                            )}
+                                            <span style={{ fontWeight: '600' }}>{apt.startTime}</span> {apt.type === 'event' ? apt.title : apt.patient}
+                                        </div>
+                                    ))}
+                                    {getAppointmentsForDate(date).length > 3 && (
+                                        <div style={{ fontSize: '10px', color: '#64748b', paddingLeft: '4px' }}>
+                                            + {getAppointmentsForDate(date).length - 3} más
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             ) : viewMode === 'day' ? (

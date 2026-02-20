@@ -1,19 +1,72 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, MessageCircle, Link2, Unlink } from 'lucide-react';
+import { useGoogleLogin } from '@react-oauth/google';
 import styles from './IntegrationsPage.module.css';
+import { logoutFromGoogle } from '../lib/googleAuth';
+import { exchangeGoogleCodeForTokens } from '../services/googleCalendarService';
 
 export default function IntegrationsPage() {
-    // Mocking the state for now. In a real scenario, fetch this from Supabase.
+    // Real state based on LocalStorage token presence for Google
     const [integrations, setIntegrations] = useState({
-        googleCalendar: { isConnected: false, lastSync: null },
+        googleCalendar: {
+            isConnected: !!localStorage.getItem('google_access_token'),
+            lastSync: null,
+            email: localStorage.getItem('google_connected_email') || null
+        },
         whatsapp: { isConnected: false, lastSync: null }
     });
     const [loading, setLoading] = useState(false);
 
-    // Simulated API call
-    const toggleIntegration = async (provider) => {
+    // Setup Google Login Hook (Authorization Code flow for offline access)
+    const loginGoogle = useGoogleLogin({
+        onSuccess: async (codeResponse) => {
+            console.log('Got Auth Code, exchanging...', codeResponse);
+            const result = await exchangeGoogleCodeForTokens(codeResponse.code);
+
+            if (result.success) {
+                setIntegrations(prev => ({
+                    ...prev,
+                    googleCalendar: {
+                        isConnected: true,
+                        lastSync: new Date().toISOString(),
+                        email: localStorage.getItem('google_connected_email')
+                    }
+                }));
+            } else {
+                console.error("Token Exchange failed:", result.error);
+                alert("Error al conectar con Google: " + result.error);
+            }
+            setLoading(false);
+        },
+        onError: error => {
+            console.error('Login Failed:', error);
+            setLoading(false);
+        },
+        flow: 'auth-code',
+        scope: "https://www.googleapis.com/auth/calendar email profile",
+    });
+
+    const handleGoogleConnect = () => {
         setLoading(true);
-        // Simulate network delay
+        loginGoogle();
+    };
+
+    const handleGoogleDisconnect = () => {
+        setLoading(true);
+        logoutFromGoogle();
+        localStorage.removeItem('google_connected_email');
+        setIntegrations(prev => ({
+            ...prev,
+            googleCalendar: { isConnected: false, lastSync: null, email: null }
+        }));
+        setLoading(false);
+    };
+
+    // Simulated API call for Whatsapp
+    const toggleIntegration = async (provider) => {
+        if (provider === 'googleCalendar') return; // Handled separately
+
+        setLoading(true);
         await new Promise(resolve => setTimeout(resolve, 800));
 
         setIntegrations(prev => ({
@@ -42,7 +95,7 @@ export default function IntegrationsPage() {
                             <CalendarIcon size={24} />
                         </div>
                         <span className={`${styles.statusBadge} ${integrations.googleCalendar.isConnected ? styles.statusConnected : styles.statusDisconnected}`}>
-                            {integrations.googleCalendar.isConnected ? 'Conectado' : 'Desconectado'}
+                            {integrations.googleCalendar.isConnected ? `Conectado: ${integrations.googleCalendar.email || 'Cuenta Activa'}` : 'Desconectado'}
                         </span>
                     </div>
                     <div className={styles.cardBody}>
@@ -55,7 +108,7 @@ export default function IntegrationsPage() {
                         {integrations.googleCalendar.isConnected ? (
                             <button
                                 className={styles.btnDisconnect}
-                                onClick={() => toggleIntegration('googleCalendar')}
+                                onClick={handleGoogleDisconnect}
                                 disabled={loading}
                             >
                                 <Unlink size={16} />
@@ -64,7 +117,7 @@ export default function IntegrationsPage() {
                         ) : (
                             <button
                                 className={styles.btnConnect}
-                                onClick={() => toggleIntegration('googleCalendar')}
+                                onClick={handleGoogleConnect}
                                 disabled={loading}
                             >
                                 <Link2 size={16} />
@@ -117,3 +170,4 @@ export default function IntegrationsPage() {
         </div>
     );
 }
+

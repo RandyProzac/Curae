@@ -203,10 +203,11 @@
     /* Ring effect */
 }
 
-/* Page Content Window */
 .content {
     flex: 1;
     overflow-y: auto;
+    overflow-x: auto;
+    /* Added for responsive horizontal scrolling */
     padding: var(--spacing-xl);
     scroll-behavior: smooth;
 }
@@ -259,6 +260,58 @@
 .overlayVisible {
     opacity: 1;
     visibility: visible;
+}
+
+/* Tablet Responsive (Collapse Sidebar to Icons) */
+@media (max-width: 1200px) and (min-width: 769px) {
+    .sidebar {
+        width: 80px;
+        align-items: center;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .logoContainer {
+        padding: 0;
+        justify-content: center;
+    }
+
+    .logoText {
+        display: none;
+    }
+
+    .nav {
+        align-items: center;
+        padding: 0;
+        width: 100%;
+    }
+
+    .navItem {
+        padding: var(--spacing-md);
+        justify-content: center;
+        width: calc(100% - var(--spacing-md) * 2);
+    }
+
+    .navItem span {
+        display: none;
+    }
+
+    .sidebarFooter {
+        padding: var(--spacing-lg) 0;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+
+    .logoutBtn {
+        justify-content: center;
+        padding: var(--spacing-md);
+        width: auto;
+    }
+
+    .logoutBtn span {
+        display: none;
+    }
 }
 
 @media (max-width: 768px) {

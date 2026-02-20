@@ -12,13 +12,13 @@
 .title {
     font-size: 28px;
     font-weight: 700;
-    color: #1e293b;
+    color: var(--text-primary);
     margin-bottom: 8px;
 }
 
 .subtitle {
     font-size: 15px;
-    color: #64748b;
+    color: var(--text-secondary);
 }
 
 .grid {
@@ -28,13 +28,13 @@
 }
 
 .card {
-    background: white;
+    background: var(--bg-card);
     border-radius: 16px;
     padding: 24px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
     display: flex;
     flex-direction: column;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border-subtle);
     transition: transform 0.2s, box-shadow 0.2s;
 }
 
@@ -60,12 +60,12 @@
 }
 
 .googleIcon {
-    background: #f0fdf4;
+    background: rgba(22, 163, 74, 0.1);
     color: #16a34a;
 }
 
 .whatsappIcon {
-    background: #ecfdf5;
+    background: rgba(16, 185, 129, 0.1);
     color: #10b981;
 }
 
@@ -78,13 +78,13 @@
 }
 
 .statusConnected {
-    background: #dcfce7;
-    color: #166534;
+    background: rgba(22, 101, 52, 0.1);
+    color: #22c55e;
 }
 
 .statusDisconnected {
-    background: #f1f5f9;
-    color: #64748b;
+    background: var(--bg-hover);
+    color: var(--text-secondary);
 }
 
 .cardBody {
@@ -94,13 +94,13 @@
 .cardTitle {
     font-size: 18px;
     font-weight: 600;
-    color: #1e293b;
+    color: var(--text-primary);
     margin-bottom: 8px;
 }
 
 .cardDescription {
     font-size: 14px;
-    color: #64748b;
+    color: var(--text-secondary);
     line-height: 1.5;
     margin-bottom: 24px;
 }
@@ -108,7 +108,7 @@
 .cardFooter {
     margin-top: auto;
     padding-top: 16px;
-    border-top: 1px solid #f1f5f9;
+    border-top: 1px solid var(--border-subtle);
 }
 
 .btnConnect {
@@ -124,12 +124,12 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    background: #3b82f6;
+    background: var(--primary-blue);
     color: white;
 }
 
 .btnConnect:hover {
-    background: #2563eb;
+    background: var(--primary-blue-dark);
 }
 
 .btnDisconnect {
@@ -140,9 +140,9 @@
     font-size: 14px;
     cursor: pointer;
     transition: all 0.2s;
-    background: white;
-    color: #ef4444;
-    border: 1px solid #fecaca;
+    background: var(--bg-app);
+    color: var(--danger);
+    border: 1px solid var(--danger);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -150,5 +150,5 @@
 }
 
 .btnDisconnect:hover {
-    background: #fef2f2;
+    background: var(--danger-bg);
 }
