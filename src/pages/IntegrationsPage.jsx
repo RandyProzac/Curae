@@ -4,7 +4,7 @@ import { useGoogleLogin } from '@react-oauth/google';
 import styles from './IntegrationsPage.module.css';
 import { logoutFromGoogle } from '../lib/googleAuth';
 import { exchangeGoogleCodeForTokens } from '../services/googleCalendarService';
-
+import { supabase } from '../lib/supabase';
 export default function IntegrationsPage() {
     // Real state based on LocalStorage token presence for Google
     const [integrations, setIntegrations] = useState({
@@ -16,6 +16,38 @@ export default function IntegrationsPage() {
         whatsapp: { isConnected: false, lastSync: null }
     });
     const [loading, setLoading] = useState(false);
+
+    // Initial load: check Central Supabase Database to see if there is ANY Master Token saved.
+    useEffect(() => {
+        const checkGlobalConnection = async () => {
+            setLoading(true);
+            try {
+                const { data, error } = await supabase
+                    .from('integrations')
+                    .select('status, updated_at')
+                    .eq('provider', 'google_calendar')
+                    .maybeSingle();
+
+                if (data && data.status === 'connected') {
+                    setIntegrations(prev => ({
+                        ...prev,
+                        googleCalendar: {
+                            isConnected: true,
+                            lastSync: data.updated_at,
+                            // Retain local email if we have it, else show generic "Cuenta Administrativa"
+                            email: prev.googleCalendar.email || 'Cuenta Administrativa de Clínica'
+                        }
+                    }));
+                }
+            } catch (err) {
+                console.error("Error checking global connection", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        checkGlobalConnection();
+    }, []);
 
     // Setup Google Login Hook (Authorization Code flow for offline access)
     const loginGoogle = useGoogleLogin({
@@ -51,10 +83,21 @@ export default function IntegrationsPage() {
         loginGoogle();
     };
 
-    const handleGoogleDisconnect = () => {
+    const handleGoogleDisconnect = async () => {
         setLoading(true);
         logoutFromGoogle();
         localStorage.removeItem('google_connected_email');
+        localStorage.removeItem('google_access_token');
+        localStorage.removeItem('google_token_expiry');
+
+        // Disconnect Globally
+        try {
+            await supabase
+                .from('integrations')
+                .update({ status: 'disconnected', access_token: null, refresh_token: null })
+                .eq('provider', 'google_calendar');
+        } catch (e) { console.error(e); }
+
         setIntegrations(prev => ({
             ...prev,
             googleCalendar: { isConnected: false, lastSync: null, email: null }
