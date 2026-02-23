@@ -246,13 +246,13 @@ const FinancePage = () => {
                         />
                     </div>
                     <KpiCard
-                        title="Facturación del Periodo"
+                        title="Ingresos Reales (Cobrados)"
                         value={formatCurrency(monthSummary.income)}
                         icon={<Activity size={20} />}
                         colorClass="iconBlue"
                         subtext={todayMetrics.isToday ? "acumulado hoy" : `total en ${selectedDay.toLocaleDateString('es-ES')}`}
                         trend="up"
-                        trendValue="Ingresos"
+                        trendValue="Cobrado"
                     />
                     <KpiCard
                         title="Gastos Operativos"
@@ -444,7 +444,7 @@ const FinancePage = () => {
                                     </div>
                                     <div className={styles.patientValue}>
                                         <div className={styles.vGroup}>
-                                            <span className={styles.vLabel}>Presupuesto Total:</span>
+                                            <span className={styles.vLabel}>Inversión Comprometida:</span>
                                             <span className={styles.vBudget}>{formatCurrency(patient.totalBudget)}</span>
                                         </div>
                                         <div className={styles.vGroup}>
