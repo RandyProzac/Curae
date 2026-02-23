@@ -19,10 +19,19 @@ export const AuthProvider = ({ children }) => {
     // Mock logic for demo
     let userData = null;
 
-    if (email === 'admin@curae.com' && password === 'admin123') {
-      userData = { id: '1', name: 'Administrador Principal', email, role: 'ADMIN' };
-    } else if (email === 'doctor@curae.com' && password === 'doctor123') {
-      userData = { id: '2', name: 'Dr. Roberto Mendoza', email, role: 'DOCTOR' };
+    const doctorsLogins = {
+      'luciana': { id: '1', name: 'Luciana Renata Jiménez Aranzaens', role: 'ADMIN' },
+      'carolina': { id: '2', name: 'Luciana Pacheco Hurtado', role: 'DOCTOR' },
+      'barbara': { id: '3', name: 'Barbara Casapía Prado', role: 'DOCTOR' },
+      'diego': { id: '4', name: 'Diego Casapía Prado', role: 'DOCTOR' },
+      'stephany': { id: '5', name: 'Stephany Baldarrago Zevallos', role: 'DOCTOR' },
+      'mariaelena': { id: '6', name: 'Maria Elena Prado Rivera', role: 'DOCTOR' },
+      'sergio': { id: '7', name: 'Sergio Huaylla Paredes', role: 'DOCTOR' }
+    };
+
+    const loginKey = email.toLowerCase().trim();
+    if (doctorsLogins[loginKey] && password === `${loginKey}123`) {
+      userData = { ...doctorsLogins[loginKey], email: `${loginKey}@curae.com` };
     }
 
     if (userData) {

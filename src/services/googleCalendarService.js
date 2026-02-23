@@ -159,7 +159,26 @@ export const getOrCreateDoctorCalendar = async (doctor, token) => {
     }
 
     try {
-        // Create new calendar
+        // 1. Check if it already exists in Google for this account (to avoid duplicates)
+        const listResponse = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (listResponse.ok) {
+            const listData = await listResponse.json();
+            const existing = listData.items?.find(item =>
+                item.summary === `${doctor.name} - CURAE` ||
+                item.summary === `Curae - ${doctor.name}`
+            );
+
+            if (existing) {
+                // Update Supabase with the found ID
+                await supabase.from('doctors').update({ google_calendar_id: existing.id }).eq('id', doctor.id);
+                return existing.id;
+            }
+        }
+
+        // 2. If not found, create new calendar
         const response = await fetch('https://www.googleapis.com/calendar/v3/calendars', {
             method: 'POST',
             headers: {
@@ -167,7 +186,7 @@ export const getOrCreateDoctorCalendar = async (doctor, token) => {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                summary: `Curae - ${doctor.name}`,
+                summary: `${doctor.name} - CURAE`,
                 timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
             }),
         });

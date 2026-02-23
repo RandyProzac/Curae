@@ -44,7 +44,7 @@ export default function ClinicalHistoryPage() {
     const [formData, setFormData] = useState({
         numeroHistoria: '',
         fechaIngreso: new Date().toISOString().split('T')[0],
-        odontologo: 'Dr. Roberto Mendoza', // Could fetch from auth user
+        odontologo: 'Luciana Renata Jiménez Aranzaens', // Could fetch from auth user
 
         // Datos personales
         apellidos: '',

@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Activity, Image as ImageIcon } from 'lucide-react';
 import EvolutionOdontogram from '../components/clinical-history/EvolutionOdontogram';
 import EvolutionNotesPanel from '../components/clinical-history/EvolutionNotesPanel';
+import PlanGallery from '../components/clinical-history/PlanGallery';
+import { Camera } from 'lucide-react';
 import { treatmentPlanApi } from '../lib/supabase';
 import './TreatmentEvolutionPage.css'; // Import custom styles
 
@@ -119,10 +121,12 @@ export default function TreatmentEvolutionPage() {
                             />
                         </div>
                     ) : (
-                        <div className="images-placeholder">
-                            <ImageIcon size={48} opacity={0.5} />
-                            <div style={{ fontWeight: 500, fontSize: '1.125rem' }}>Galería de Imágenes (Próximamente)</div>
-                            <div style={{ fontSize: '0.875rem' }}>Aquí podrás subir fotos intraorales y extraorales.</div>
+                        <div className="images-panel custom-scrollbar">
+                            <div className="gallery-section-header">
+                                <Camera size={18} />
+                                <span>Imágenes del Plan</span>
+                            </div>
+                            <PlanGallery planId={plan.id} patientId={plan.patient_id} />
                         </div>
                     )}
                 </div>

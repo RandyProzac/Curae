@@ -14,6 +14,7 @@ import {
 import styles from './DashboardPage.module.css';
 import { supabase, financeApi, inventoryApi } from '../lib/supabase';
 import DoctorStatusBoard from '../components/dashboard/DoctorStatusBoard';
+import { useAuth } from '../contexts/useAuth';
 
 const QUOTES = [
     "La sonrisa es la mejor carta de presentación. 😁",
@@ -34,6 +35,7 @@ const DashboardPage = () => {
     });
     const [lowStockItems, setLowStockItems] = useState([]);
     const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
     const [userName, setUserName] = useState('Doctor');
     const [quote, setQuote] = useState('');
     const navigate = useNavigate();
@@ -42,19 +44,11 @@ const DashboardPage = () => {
     const [upcomingAppointments, setUpcomingAppointments] = useState([]);
 
     useEffect(() => {
-        // 1. Get User
-        const getUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                // Try to get name from metadata or split email
-                const name = user.user_metadata?.first_name
-                    || user.user_metadata?.name
-                    || user.email?.split('@')[0];
-                // Capitalize
-                setUserName(name ? name.charAt(0).toUpperCase() + name.slice(1) : 'Doctor');
-            }
-        };
-        getUser();
+        // 1. Get User Name for Greeting
+        if (user?.name) {
+            const firstName = user.name.split(' ')[0];
+            setUserName(firstName);
+        }
 
         // 2. Set Quote (Daily rotation based on day number)
         const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24);
@@ -209,7 +203,7 @@ const DashboardPage = () => {
             <header className={styles.welcomeHeader}>
                 <div className={styles.grain}></div>
                 <div>
-                    <h1>Bienvenido, {userName} 👋</h1>
+                    <h1>¡Hola {userName}! 👋</h1>
                     <p className={styles.quote}>"{quote}"</p>
                 </div>
                 <div className={styles.headerStats}>
@@ -218,7 +212,7 @@ const DashboardPage = () => {
                         <strong>{loading ? '...' : stats.appointmentsToday}</strong>
                     </div>
                     <div className={styles.headerStatItem}>
-                        <span>Ingresos Semana</span>
+                        <span>Ingreso Semanal</span>
                         <strong>{loading ? '...' : formatCurrency(stats.incomeWeek)}</strong>
                     </div>
                 </div>

@@ -131,6 +131,27 @@
     padding: 1rem;
 }
 
+.images-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+    background-color: #ffffff;
+}
+
+.gallery-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    color: #475569;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 0.75rem;
+}
+
 .images-placeholder {
     flex: 1;
     display: flex;

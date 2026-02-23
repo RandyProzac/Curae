@@ -19,13 +19,17 @@ import { supabase, doctorsApi, servicesApi, patientsApi, appointmentsApi } from 
 import TimeCombobox from '../components/appointments/TimeCombobox';
 import ServiceSelector from '../components/appointments/ServiceSelector';
 import { APPOINTMENT_STATUS, getStatusConfig } from '../utils/constants';
-import { createGoogleCalendarEvent, fetchExternalEvents, getValidGoogleToken } from '../services/googleCalendarService';
+import { createGoogleCalendarEvent, fetchExternalEvents, getValidGoogleToken, getOrCreateDoctorCalendar } from '../services/googleCalendarService';
 
 // Fallback data
 const fallbackDoctors = [
-    { id: 1, name: 'Dr. Roberto Mendoza', specialty: 'Odontología General', color: '#14b8a6' },
-    { id: 2, name: 'Dra. María García', specialty: 'Ortodoncia', color: '#f59e0b' },
-    { id: 3, name: 'Dr. Carlos López', specialty: 'Endodoncia', color: '#3b82f6' },
+    { id: '1', name: 'Luciana Renata Jiménez Aranzaens', specialty: 'Ortodoncia y Estética', color: '#F8526A' },
+    { id: '2', name: 'Luciana Pacheco Hurtado', specialty: 'Odontología General', color: '#e5e580' },
+    { id: '3', name: 'Barbara Casapía Prado', specialty: 'Endodoncia', color: '#3b82f6' },
+    { id: '4', name: 'Diego Casapía Prado', specialty: 'Ortodoncia', color: '#f59e0b' },
+    { id: '5', name: 'Stephany Baldarrago Zevallos', specialty: 'Implantología y Periodoncia', color: '#92D050' },
+    { id: '6', name: 'Maria Elena Prado Rivera', specialty: 'Odontología General', color: '#A030A3' },
+    { id: '7', name: 'Sergio Huaylla Paredes', specialty: 'Implantología y Periodoncia', color: '#0000FF' },
 ];
 
 let sessionCache = {
@@ -155,6 +159,9 @@ const AppointmentsPage = () => {
 
                 const finalDoctors = docsRes.data?.length ? docsRes.data : fallbackDoctors;
 
+                // Force sync doctors in cache to avoid old name residues
+                sessionCache.doctors = finalDoctors;
+
                 const finalAppointments = (aptsRes.data || []).map(apt => ({
                     id: apt.id,
                     patient: apt.patient ? `${apt.patient.first_name} ${apt.patient.last_name}` : 'Sin paciente',
@@ -209,7 +216,15 @@ const AppointmentsPage = () => {
                         const timeMax = new Date(now.getFullYear(), now.getMonth() + 2, 0);
 
                         // Fetch concurrently for all doctors
-                        const fetchPromises = finalDoctors.map(doc => fetchExternalEvents(doc, googleToken, timeMin, timeMax));
+                        const fetchPromises = finalDoctors.map(async doc => {
+                            // Ensure doctor has a calendar ID (Restore sync for new doctors)
+                            const calendarId = doc.google_calendar_id || await getOrCreateDoctorCalendar(doc, googleToken);
+                            if (calendarId) {
+                                return fetchExternalEvents({ ...doc, google_calendar_id: calendarId }, googleToken, timeMin, timeMax);
+                            }
+                            return [];
+                        });
+
                         const results = await Promise.all(fetchPromises);
                         results.forEach(res => {
                             if (res && res.length > 0) {
@@ -582,20 +597,29 @@ const AppointmentsPage = () => {
         const eMin = parseInt(end.split(':')[0]) * 60 + parseInt(end.split(':')[1]);
 
         const conflict = [...appointments, ...(events || [])].find(item => {
-            if (item.id === excludeId) return false;
-            if (item.date !== date) return false;
-            // Handle events with no doctor assigned? Usually they don't block specific doctors.
-            // But if item has NO doctor, does it block everyone? Assuming generic events don't block.
-            if (item.doctorId && item.doctorId !== doctorId) return false;
+            // 1. Skip if it's the same record we are editing
+            if (item.id == excludeId) return false;
 
+            // 2. Skip if it's a different day
+            if (item.date !== date) return false;
+
+            // 3. Skip if it's for a different doctor
+            // Note: If item.doctorId is null/falsy, it's a global block (usually an Event).
+            // We only want global EVENTS to block everyone. Global APPOINTMENTS (Citas) shouldn't block everyone.
+            if (item.doctorId && item.doctorId != doctorId) return false;
+            if (!item.doctorId && item.type === 'appointment' && doctorId) return false;
+
+            // 4. Time Overlap Check
             const iSMin = parseInt(item.startTime.split(':')[0]) * 60 + parseInt(item.startTime.split(':')[1]);
             const iEMin = iSMin + item.duration;
 
-            return (sMin < iEMin && eMin > iSMin);
+            const isOverlap = (sMin < iEMin && eMin > iSMin);
+            return isOverlap;
         });
 
         if (conflict) {
-            return `El doctor seleccionado ya tiene una actividad programada en este horario (${conflict.startTime} - ${conflict.type === 'event' ? 'Evento' : 'Cita'}).`;
+            console.log('Conflict detected with:', conflict);
+            return `El doctor seleccionado ya tiene una actividad programada en este horario (${conflict.startTime} - ${conflict.type === 'event' ? 'Evento' : 'Cita'}). Si no ves la cita, verifica los filtros de doctor.`;
         }
         return null;
     };
@@ -628,28 +652,60 @@ const AppointmentsPage = () => {
             }
 
             if (createNewPatient) {
+                // 1a. Check if patient with this DNI already exists to avoid unique constraint error
+                if (newAppointment.newPatientDni) {
+                    const { data: existingPat, error: searchError } = await supabase
+                        .from('patients')
+                        .select('*')
+                        .eq('dni', newAppointment.newPatientDni)
+                        .maybeSingle();
 
-                const { data: newPat, error: patError } = await supabase
-                    .from('patients')
-                    .insert([{
-                        first_name: newAppointment.newPatientName,
-                        last_name: newAppointment.newPatientLastName,
-                        phone: newAppointment.newPatientPhone,
-                        date_of_birth: '2000-01-01',
-                        address: newAppointment.newPatientAddress || null,
-                        email: newAppointment.newPatientEmail || null,
-                        dni: newAppointment.newPatientDni || null
-                    }])
-                    .select()
-                    .single();
-                if (patError) throw patError;
-                finalPatientId = newPat.id;
-                setPatientsData([...patientsData, newPat]);
+                    if (existingPat) {
+                        finalPatientId = existingPat.id;
+                        // Inform user or just proceed with found ID
+                        console.log("Patient already exists with this DNI, using existing record.");
+                    } else {
+                        // Create new patient
+                        const { data: newPat, error: patError } = await supabase
+                            .from('patients')
+                            .insert([{
+                                first_name: newAppointment.newPatientName,
+                                last_name: newAppointment.newPatientLastName,
+                                phone: newAppointment.newPatientPhone,
+                                date_of_birth: '2000-01-01',
+                                address: newAppointment.newPatientAddress || null,
+                                email: newAppointment.newPatientEmail || null,
+                                dni: newAppointment.newPatientDni || null
+                            }])
+                            .select()
+                            .single();
+                        if (patError) throw patError;
+                        finalPatientId = newPat.id;
+                        setPatientsData(prev => [...prev, newPat]);
+                    }
+                } else {
+                    // Patient without DNI (less common but possible)
+                    const { data: newPat, error: patError } = await supabase
+                        .from('patients')
+                        .insert([{
+                            first_name: newAppointment.newPatientName,
+                            last_name: newAppointment.newPatientLastName,
+                            phone: newAppointment.newPatientPhone,
+                            date_of_birth: '2000-01-01',
+                            address: newAppointment.newPatientAddress || null,
+                            email: newAppointment.newPatientEmail || null,
+                            dni: null
+                        }])
+                        .select()
+                        .single();
+                    if (patError) throw patError;
+                    finalPatientId = newPat.id;
+                    setPatientsData(prev => [...prev, newPat]);
+                }
             }
-
             const payload = {
-                patient_id: finalPatientId,
-                doctor_id: newAppointment.doctorId,
+                patient_id: finalPatientId || null,
+                doctor_id: newAppointment.doctorId || null,
                 service_id: newAppointment.serviceId || null,
                 date: newAppointment.date,
                 start_time: newAppointment.startTime,

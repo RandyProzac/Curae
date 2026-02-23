@@ -42,11 +42,11 @@ const LoginPage = () => {
                     )}
 
                     <div className={styles.inputGroup}>
-                        <label htmlFor="email">Correo Electrónico</label>
+                        <label htmlFor="email">Usuario o Correo</label>
                         <input
                             id="email"
-                            type="email"
-                            placeholder="ejemplo@curae.com"
+                            type="text"
+                            placeholder="luciana o ejemplo@curae.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
@@ -81,8 +81,7 @@ const LoginPage = () => {
                     <p>&copy; 2026 Curae Online Dental Solutions</p>
                     <div className={styles.testAccount}>
                         <p><strong>Cuentas de prueba:</strong></p>
-                        <p>Admin: admin@curae.com / admin123</p>
-                        <p>Doctor: doctor@curae.com / doctor123</p>
+                        <p>Principal: luciana / luciana123</p>
                     </div>
                 </div>
             </div>

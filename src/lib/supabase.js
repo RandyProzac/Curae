@@ -63,16 +63,27 @@ export const doctorsApi = {
 
     async getStats(doctorId) {
         const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-        const { count: patientsCount, error: pError } = await supabase
+        const { data, error: pError } = await supabase
             .from('appointments')
-            .select('patient_id', { count: 'exact', head: true })
+            .select('patient_id')
             .eq('doctor_id', doctorId)
             .gte('date', startOfMonth);
 
-        if (pError) console.warn('Error fetching doctor stats:', pError);
+        if (pError) {
+            console.warn('Error fetching doctor stats:', pError);
+            return { patientsMonth: 0 };
+        }
+
+        // Count unique patients using a Set
+        // Filter out null patient_ids just in case
+        const uniquePatients = new Set(
+            data
+                .map(item => item.patient_id)
+                .filter(id => id !== null)
+        );
 
         return {
-            patientsMonth: patientsCount || 0
+            patientsMonth: uniquePatients.size
         };
     },
 
