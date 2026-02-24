@@ -64,38 +64,59 @@ const DashboardPage = () => {
 
                 if (patError) console.error('Error counting patients:', patError);
 
-                // Appointments Today
+                // Filter by Doctor if user is logged in
+                const doctorId = user?.id;
+
+                // Appointments Today (Filtered by Doctor)
                 const todayStr = new Date().toISOString().split('T')[0];
-                const { count: aptCount } = await supabase
+                let aptTodayQuery = supabase
                     .from('appointments')
                     .select('id', { count: 'exact', head: true })
                     .eq('date', todayStr);
 
-                // Active Treatments (Planes de Tratamiento Activos)
-                const { count: activeCount } = await supabase
+                if (doctorId) aptTodayQuery = aptTodayQuery.eq('doctor_id', doctorId);
+                const { count: aptCount } = await aptTodayQuery;
+
+                // Appointments Week (Filtered by Doctor)
+                const d = new Date();
+                const day = d.getDay();
+                const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                const monday = new Date(d.setDate(diff));
+                monday.setHours(0, 0, 0, 0);
+                const mondayStr = monday.toISOString().split('T')[0];
+
+                let aptWeekQuery = supabase
+                    .from('appointments')
+                    .select('id', { count: 'exact', head: true })
+                    .gte('date', mondayStr);
+
+                if (doctorId) aptWeekQuery = aptWeekQuery.eq('doctor_id', doctorId);
+                const { count: aptWeekCount } = await aptWeekQuery;
+
+                // GLOBAL STATS (KPI Cards) - Keep some global for context or also personal?
+                // The user asked for personal stats in the header.
+
+                // Patients Count
+                const { count: totalPatCount } = await supabase
+                    .from('patients')
+                    .select('id', { count: 'exact', head: true });
+
+                // Active Treatments
+                const { count: totalActiveCount } = await supabase
                     .from('treatment_plans')
                     .select('id', { count: 'exact', head: true })
                     .eq('status', 'active');
 
                 // Income - Month
-                const date = new Date();
-                const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1).toISOString();
+                const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
                 const incomeMonth = await financeApi.getIncomeByPeriod(startOfMonth);
 
-                // Income - Week (From Monday)
-                const d = new Date();
-                const day = d.getDay();
-                const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
-                const monday = new Date(d.setDate(diff));
-                monday.setHours(0, 0, 0, 0);
-                const incomeWeek = await financeApi.getIncomeByPeriod(monday.toISOString());
-
                 setStats({
-                    patientsCount: patCount || 0,
+                    patientsCount: totalPatCount || 0,
                     appointmentsToday: aptCount || 0,
-                    activeTreatments: activeCount || 0,
-                    incomeMonth: incomeMonth || 0,
-                    incomeWeek: incomeWeek || 0
+                    appointmentsWeek: aptWeekCount || 0,
+                    activeTreatments: totalActiveCount || 0,
+                    incomeMonth: incomeMonth || 0
                 });
 
                 // Low Stock
@@ -117,6 +138,7 @@ const DashboardPage = () => {
                 const { data: upcomingData } = await supabase
                     .from('appointments')
                     .select('*, patient:patients(first_name, last_name), service:services(name)')
+                    .eq('doctor_id', doctorId || '') // Filter upcoming by current doctor
                     .gte('date', currentTodayStr)
                     .neq('status', 'cancelled')
                     .order('date', { ascending: true })
@@ -153,7 +175,7 @@ const DashboardPage = () => {
             }
         };
         fetchStats();
-    }, []);
+    }, [user]);
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(amount);
@@ -212,8 +234,8 @@ const DashboardPage = () => {
                         <strong>{loading ? '...' : stats.appointmentsToday}</strong>
                     </div>
                     <div className={styles.headerStatItem}>
-                        <span>Ingreso Semanal</span>
-                        <strong>{loading ? '...' : formatCurrency(stats.incomeWeek)}</strong>
+                        <span>Pacientes Semanales</span>
+                        <strong>{loading ? '...' : stats.appointmentsWeek}</strong>
                     </div>
                 </div>
             </header>

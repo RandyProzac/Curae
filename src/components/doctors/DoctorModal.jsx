@@ -3,14 +3,11 @@ import { X, Save, Check } from 'lucide-react';
 import styles from './DoctorModal.module.css';
 
 const PRESET_COLORS = [
-    '#14b8a6', // Teal
-    '#f59e0b', // Amber
-    '#3b82f6', // Blue
-    '#ec4899', // Pink
-    '#8b5cf6', // Violet
-    '#10b981', // Emerald
-    '#ef4444', // Red
-    '#6366f1'  // Indigo
+    '#14b8a6', '#10b981', '#22c55e', '#84cc16',
+    '#eab308', '#f59e0b', '#f97316', '#ef4444',
+    '#f43f5e', '#ec4899', '#d946ef', '#a855f7',
+    '#8b5cf6', '#6366f1', '#3b82f6', '#0ea5e9',
+    '#06b6d4', '#475569'
 ];
 
 const DoctorModal = ({ isOpen, onClose, onSave, doctor = null }) => {
@@ -158,7 +155,10 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null }) => {
                     </div>
 
                     <div className={styles.formGroup}>
-                        <label className={styles.label}>Color de Calendario</label>
+                        <div className={styles.labelRow}>
+                            <label className={styles.label}>Color de Calendario</label>
+                            <span className={styles.colorValue}>{formData.color.toUpperCase()}</span>
+                        </div>
                         <div className={styles.colorsGrid}>
                             {PRESET_COLORS.map(c => (
                                 <div
@@ -168,10 +168,34 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null }) => {
                                     onClick={() => setFormData({ ...formData, color: c })}
                                 >
                                     {formData.color === c && (
-                                        <Check size={16} color="white" style={{ margin: '6px' }} />
+                                        <Check size={18} color="white" />
                                     )}
                                 </div>
                             ))}
+
+                            {/* Custom Color Picker */}
+                            <div className={styles.customColorWrapper}>
+                                <div
+                                    className={`${styles.colorOption} ${styles.customTrigger} ${!PRESET_COLORS.includes(formData.color) ? styles.selected : ''}`}
+                                    style={{
+                                        backgroundColor: !PRESET_COLORS.includes(formData.color) ? formData.color : '#f1f5f9',
+                                        border: PRESET_COLORS.includes(formData.color) ? '2px dashed #cbd5e1' : '3px solid white'
+                                    }}
+                                >
+                                    <input
+                                        type="color"
+                                        className={styles.colorInputHidden}
+                                        value={formData.color}
+                                        onChange={e => setFormData({ ...formData, color: e.target.value })}
+                                        title="Color personalizado"
+                                    />
+                                    {(!PRESET_COLORS.includes(formData.color)) ? (
+                                        <Check size={18} color="white" />
+                                    ) : (
+                                        <span style={{ fontSize: '20px', color: '#94a3b8', lineHeight: 1 }}>+</span>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
 

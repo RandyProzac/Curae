@@ -67,14 +67,26 @@ const DoctorsPage = () => {
     };
 
     const handleSave = async (formData) => {
-        if (editingDoctor) {
-            const updated = await doctorsApi.update(editingDoctor.id, formData);
-            setDoctors(prev => prev.map(d => d.id === updated.id ? updated : d));
-        } else {
-            const created = await doctorsApi.create(formData);
-            setDoctors(prev => [...prev, created]);
+        try {
+            if (editingDoctor) {
+                // Update doctor
+                const updated = await doctorsApi.update(editingDoctor.id, formData);
+
+                // Cascade: Update all events of this doctor if color changed
+                if (editingDoctor.color !== formData.color) {
+                    await doctorsApi.updateEventColors(editingDoctor.id, formData.color);
+                }
+
+                setDoctors(prev => prev.map(d => d.id === updated.id ? updated : d));
+            } else {
+                const created = await doctorsApi.create(formData);
+                setDoctors(prev => [...prev, created]);
+            }
+            await fetchDoctors();
+        } catch (error) {
+            console.error('Error in handleSave:', error);
+            alert('Error al guardar los cambios: ' + error.message);
         }
-        fetchDoctors();
     };
 
     // Sort alphabetically

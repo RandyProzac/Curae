@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import {
     ChevronDown,
     ChevronRight,
@@ -11,7 +11,8 @@ import {
     X,
     Stethoscope,
 } from 'lucide-react';
-import { budgetsApi, paymentsApi } from '../../lib/supabase';
+import { budgetsApi, paymentsApi, supabase } from '../../lib/supabase';
+import AuthContext from '../../contexts/AuthContext';
 import ServiceSelector from '../appointments/ServiceSelector';
 import PrintableBudget from '../common/PrintableBudget';
 
@@ -34,6 +35,7 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
     const [paymentMethod, setPaymentMethod] = useState('efectivo');
     const [paymentNotes, setPaymentNotes] = useState('');
     const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null });
+    const [isPaying, setIsPaying] = useState(false);
 
     // Print state
     const [printingBudget, setPrintingBudget] = useState(null);
@@ -118,9 +120,14 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
         });
     };
 
+    const { user } = useContext(AuthContext);
+
     const handleAddItem = async (budgetId) => {
         if (!newItemData.service) return;
         try {
+            // Use current session user (doctor) to attribute new work
+            const activeDoctorId = user?.id || null;
+
             const item = await budgetsApi.addItem({
                 budget_id: budgetId,
                 service_id: newItemData.service.id,
@@ -130,7 +137,17 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
                 unit_price: newItemData.price || newItemData.service.price,
                 discount: newItemData.discount || 0,
                 discount_type: newItemData.discountType || 'fixed',
+                doctor_id: activeDoctorId // Attributed to the doctor who ADDS the item
             });
+
+            // Update Patient's Primary Doctor to the one who is currently adding work
+            if (activeDoctorId) {
+                await supabase
+                    .from('patients')
+                    .update({ doctor_id: activeDoctorId })
+                    .eq('id', patientId);
+            }
+
             setBudgets(budgets.map(b =>
                 b.id === budgetId
                     ? { ...b, budget_items: [...(b.budget_items || []), { ...item, payments: [] }] }
@@ -138,6 +155,8 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
             ));
             setNewItemData({ service: null, toothNumber: '', quantity: 1, price: 0, discount: 0, discountType: 'fixed' });
             setAddingItemTo(null);
+
+            // Note: sidebar will reflect the color change on next load or if we force a refresh
         } catch (err) {
             console.error('Error adding item:', err);
         }
@@ -166,26 +185,44 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
 
     const handlePayment = async () => {
         const amount = parseFloat(paymentAmount);
-        if (!amount || amount <= 0 || !paymentModal.item) return;
+        const item = paymentModal.item;
+
+        if (!amount || amount <= 0 || !item || isPaying) return;
+
+        // Validation: Prevent overpayment
+        const rawPrice = parseFloat(item.unit_price) * (item.quantity || 1);
+        const discountVal = parseFloat(item.discount || 0);
+        const itemDiscount = (item.discount_type === 'percent')
+            ? (rawPrice * discountVal / 100) : discountVal;
+        const subtotal = rawPrice - itemDiscount;
+        const paidSoFar = parseFloat(item.paid_amount || 0);
+        const remaining = Math.max(0, subtotal - paidSoFar);
+
+        if (amount > (remaining + 0.001)) {
+            alert(`El monto (S/ ${amount.toFixed(2)}) supera el saldo pendiente (S/ ${remaining.toFixed(2)}).`);
+            return;
+        }
+
         try {
+            setIsPaying(true);
             await paymentsApi.create({
-                budget_item_id: paymentModal.item.id,
+                budget_item_id: item.id,
                 amount,
                 method: paymentMethod,
                 notes: paymentNotes || null,
                 date: new Date().toLocaleDateString('en-CA'),
             });
             const updatedBudgets = budgets.map(b => {
-                const updatedItems = (b.budget_items || []).map(item =>
-                    item.id === paymentModal.item.id
-                        ? { ...item, paid_amount: parseFloat(item.paid_amount || 0) + amount }
-                        : item
+                const updatedItems = (b.budget_items || []).map(bi =>
+                    bi.id === item.id
+                        ? { ...bi, paid_amount: parseFloat(bi.paid_amount || 0) + amount }
+                        : bi
                 );
                 return { ...b, budget_items: updatedItems };
             });
             // Auto-complete check
             const finalBudgets = await Promise.all(updatedBudgets.map(async (b) => {
-                const hasThisItem = (b.budget_items || []).some(i => i.id === paymentModal.item.id);
+                const hasThisItem = (b.budget_items || []).some(i => i.id === item.id);
                 if (hasThisItem && b.status !== 'completed') {
                     const totals = getBudgetTotalsFromItems(b.budget_items);
                     if (totals.balance <= 0 && b.budget_items.length > 0) {
@@ -202,6 +239,9 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
             setPaymentNotes('');
         } catch (err) {
             console.error('Error registering payment:', err);
+            alert('Error al registrar el pago. Por favor, intente de nuevo.');
+        } finally {
+            setIsPaying(false);
         }
     };
 
@@ -503,7 +543,13 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
                         </div>
                         <div style={S.modalActions}>
                             <button style={S.cancelBtn} onClick={() => setPaymentModal({ open: false, item: null })}>Cancelar</button>
-                            <button style={S.confirmBtn} onClick={handlePayment}>Confirmar Pago</button>
+                            <button
+                                style={{ ...S.confirmBtn, opacity: isPaying ? 0.7 : 1, cursor: isPaying ? 'not-allowed' : 'pointer' }}
+                                onClick={handlePayment}
+                                disabled={isPaying}
+                            >
+                                {isPaying ? 'Procesando...' : 'Confirmar Pago'}
+                            </button>
                         </div>
                     </div>
                 </div>

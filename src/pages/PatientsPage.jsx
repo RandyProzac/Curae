@@ -63,7 +63,7 @@ const PatientsPage = () => {
             setLoading(true);
             const { data, error } = await supabase
                 .from('patients')
-                .select('*, appointments(date, start_time, status)')
+                .select('*, appointments(date, start_time, status), doctor:doctors(color)')
                 .order('last_name');
 
             if (error) throw error;
@@ -99,7 +99,8 @@ const PatientsPage = () => {
                     nextAppt: nextApt ? nextApt.date : '-',
                     rawNextAppt: nextApt ? `${nextApt.date}T${nextApt.start_time}` : null,
                     email: p.email,
-                    phone: p.phone
+                    phone: p.phone,
+                    color: p.doctor?.color || getPatientColor(`${p.first_name} ${p.last_name}`)
                 };
             });
 
@@ -131,14 +132,7 @@ const PatientsPage = () => {
 
     const handleCreatePatient = async (patientData) => {
         try {
-            const { error } = await supabase.from('patients').insert([{
-                first_name: patientData.nombres,
-                last_name: patientData.apellidos,
-                dni: patientData.dni,
-                email: patientData.email,
-                phone: patientData.telefono,
-                date_of_birth: patientData.fechaNacimiento
-            }]);
+            const { error } = await supabase.from('patients').insert([patientData]);
 
             if (error) throw error;
 
@@ -248,7 +242,7 @@ const PatientsPage = () => {
                                             >
                                                 <div
                                                     className={styles.avatar}
-                                                    style={{ backgroundColor: getPatientColor(patient.name) }}
+                                                    style={{ backgroundColor: patient.color }}
                                                 >
                                                     {patient.firstName ? patient.firstName.charAt(0).toUpperCase() : '?'}
                                                 </div>

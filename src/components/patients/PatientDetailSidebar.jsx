@@ -65,7 +65,7 @@ const PatientDetailSidebar = ({ patient, isOpen, onClose }) => {
         setLoading(true);
         try {
             const [detailRes, aptsRes, budgetsData] = await Promise.all([
-                supabase.from('patients').select('*').eq('id', patient.id).single(),
+                supabase.from('patients').select('*, doctor:doctors(name, color)').eq('id', patient.id).single(),
                 supabase.from('appointments')
                     .select('*, doctor:doctors(name), service:services(name)')
                     .eq('patient_id', patient.id)
@@ -295,7 +295,10 @@ const PatientDetailSidebar = ({ patient, isOpen, onClose }) => {
             <div className={styles.sidebar}>
                 {/* Header */}
                 <div className={styles.header}>
-                    <div className={styles.avatar} style={{ backgroundColor: getColor(fullName) }}>
+                    <div
+                        className={styles.avatar}
+                        style={{ backgroundColor: patientDetail?.doctor?.color || getColor(fullName) }}
+                    >
                         {fullName.charAt(0).toUpperCase()}
                     </div>
                     <div className={styles.headerInfo}>
@@ -405,8 +408,14 @@ const PatientDetailSidebar = ({ patient, isOpen, onClose }) => {
                                 <span className={styles.fieldLabel}>Fecha de Nacimiento</span>
                                 <span className={styles.fieldValue}>
                                     {patientDetail?.date_of_birth
-                                        ? new Date(patientDetail.date_of_birth + 'T00:00:00').toLocaleDateString('es-PE')
+                                        ? `${new Date(patientDetail.date_of_birth + 'T00:00:00').toLocaleDateString('es-PE')} (${Math.floor((new Date() - new Date(patientDetail.date_of_birth + 'T00:00:00')) / (365.25 * 24 * 60 * 60 * 1000))} años)`
                                         : '-'}
+                                </span>
+                            </div>
+                            <div className={styles.fieldGroup}>
+                                <span className={styles.fieldLabel}>Doctor Responsable</span>
+                                <span className={styles.fieldValue} style={{ color: patientDetail?.doctor?.color || '#0f766e', fontWeight: 'bold' }}>
+                                    {patientDetail?.doctor?.name || 'No asignado'}
                                 </span>
                             </div>
                             <div className={styles.fieldGroup} style={{ gridColumn: '1 / -1' }}>
@@ -425,6 +434,7 @@ const PatientDetailSidebar = ({ patient, isOpen, onClose }) => {
                             patientId={patient.id}
                             patientName={`${patient.first_name} ${patient.last_name}`.trim()}
                             patientPhone={patient.phone}
+                            onUpdate={loadPatientData}
                         />
                     )}
                 </div >

@@ -1,8 +1,10 @@
-/* Dashboard Home Grid */
 .dashboardGrid {
     display: grid;
     gap: var(--spacing-xl);
     margin-bottom: var(--spacing-2xl);
+    max-width: 100vw;
+    overflow-x: hidden;
+    position: relative;
 }
 
 /* Header Styles */

@@ -62,28 +62,30 @@ export const doctorsApi = {
     },
 
     async getStats(doctorId) {
+        // 1. Count patients where this doctor is 'Principal' (Matches the colors)
+        const { count: assignedCount, error: aError } = await supabase
+            .from('patients')
+            .select('id', { count: 'exact', head: true })
+            .eq('doctor_id', doctorId);
+
+        // 2. Count active patients (appointments this month) for activity metrics
         const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-        const { data, error: pError } = await supabase
+        const { data: appointments, error: pError } = await supabase
             .from('appointments')
             .select('patient_id')
             .eq('doctor_id', doctorId)
             .gte('date', startOfMonth);
 
-        if (pError) {
-            console.warn('Error fetching doctor stats:', pError);
-            return { patientsMonth: 0 };
+        if (aError || pError) {
+            console.warn('Error fetching doctor stats:', aError || pError);
+            return { patientsMonth: 0, activeMonth: 0 };
         }
 
-        // Count unique patients using a Set
-        // Filter out null patient_ids just in case
-        const uniquePatients = new Set(
-            data
-                .map(item => item.patient_id)
-                .filter(id => id !== null)
-        );
+        const uniqueActive = new Set((appointments || []).map(item => item.patient_id).filter(id => id !== null));
 
         return {
-            patientsMonth: uniquePatients.size
+            patientsMonth: assignedCount || 0,
+            activeMonth: uniqueActive.size
         };
     },
 
@@ -106,6 +108,14 @@ export const doctorsApi = {
             .single();
         if (error) throw error;
         return data;
+    },
+
+    async updateEventColors(doctorId, newColor) {
+        const { error } = await supabase
+            .from('events')
+            .update({ color: newColor })
+            .eq('doctor_id', doctorId);
+        if (error) console.error('Error updating event colors:', error);
     },
 
     async delete(id) {
@@ -497,15 +507,19 @@ export const budgetsApi = {
 
     // Budget Items
     async addItem(item) {
-        const { data, error } = await supabase
+        return supabase
             .from('budget_items')
-            .insert(item)
+            .insert({
+                ...item,
+                doctor_id: item.doctor_id || null
+            })
             .select()
-            .single();
-        if (error) throw error;
-        return data;
+            .single()
+            .then(({ data, error }) => {
+                if (error) throw error;
+                return data;
+            });
     },
-
     async updateItem(id, updates) {
         const { data, error } = await supabase
             .from('budget_items')
@@ -645,47 +659,60 @@ export const financeApi = {
     },
 
     /**
-     * Get revenue grouped by doctor (Best effort using appointments)
+     * Get revenue grouped by doctor (Accurate attribution via budget_items and patients)
      */
     async getRevenueByDoctor(startDate = null, endDate = null) {
-        // 1. Get all payments joined with patients
-        const payments = await this.getPaymentsWithDetails(startDate, endDate);
+        // 1. Get all payments joined with budget items and patients to find assigned doctors
+        let query = supabase
+            .from('payments')
+            .select(`
+                amount,
+                budget_item:budget_items (
+                    doctor_id,
+                    budget:budgets (
+                        patient:patients (
+                            doctor_id,
+                            doctor:doctors (name)
+                        )
+                    ),
+                    item_doctor:doctors!budget_items_doctor_id_fkey (name)
+                )
+            `);
 
-        // 2. Get all appointments to map Patient -> Doctor
-        // We link patients to the doctor they see most often or last saw
-        // REMOVED: .eq('status', 'completed') to ensure we catch all assigned doctors
-        const { data: apts } = await supabase
-            .from('appointments')
-            .select('patient_id, doctor:doctors(name)')
-            .not('doctor_id', 'is', null)
-            .order('date', { ascending: true }); // Ensure we process chronologically
+        if (startDate) query = query.gte('created_at', startDate);
+        if (endDate) query = query.lte('created_at', endDate);
 
-        // Map PatientID -> DoctorName
-        const patientDoctorMap = {};
-        if (apts) {
-            apts.forEach(apt => {
-                if (apt.doctor?.name && apt.patient_id) {
-                    // Logic: Last write wins (most recent appointment)
-                    patientDoctorMap[apt.patient_id] = apt.doctor.name;
-                }
-            });
+        const { data: payments, error } = await query;
+
+        if (error) {
+            console.warn('Error fetching revenue by doctor:', error);
+            return [];
         }
 
-        // 3. Aggregate payments by Doctor
+        // 2. Aggregate payments by Doctor
         const revenueByDoctor = {};
 
-        // Calculate total to check if we have data
-        let totalAssigned = 0;
-
         payments.forEach(payment => {
-            // If we can't find a doctor via appointments, check if we can infer it differently? 
-            // For now, default to 'Sin Asignar'
-            const docName = patientDoctorMap[payment.patientId] || 'Sin Asignar';
+            const bi = payment.budget_item;
+            const patient = bi?.budget?.patient;
+
+            // Priority:
+            // 1. Doctor assigned to the specific treatment (budget_item)
+            // 2. Primary doctor assigned to the patient
+            // 3. 'Sin Asignar'
+            let docName = 'Sin Asignar';
+
+            if (bi?.item_doctor?.name) {
+                docName = bi.item_doctor.name;
+            } else if (patient?.doctor?.name) {
+                docName = patient.doctor.name;
+            }
+
             if (!revenueByDoctor[docName]) revenueByDoctor[docName] = 0;
-            revenueByDoctor[docName] += payment.amount;
+            revenueByDoctor[docName] += parseFloat(payment.amount) || 0;
         });
 
-        // 4. Transform to array
+        // 3. Transform to array and sort
         return Object.entries(revenueByDoctor)
             .map(([name, total]) => ({ name, total }))
             .sort((a, b) => b.total - a.total);

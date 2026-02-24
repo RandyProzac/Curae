@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { Save, CheckCircle, AlertCircle, AlertTriangle, X } from 'lucide-react';
 
 import Odontograma from '../odontogram/Odontograma';
@@ -6,6 +6,7 @@ import Toolbar from '../odontogram/Toolbar';
 import TreatmentPlanTable from '../odontogram/TreatmentPlanTable';
 // ClinicalHistoryNotes removed
 import { extractFindings, treatmentPlanApi, supabase } from '../../lib/supabase';
+import AuthContext from '../../contexts/AuthContext';
 import styles from './ClinicalHistory.module.css';
 
 const ClinicalHistoryOdontogram = ({
@@ -19,6 +20,7 @@ const ClinicalHistoryOdontogram = ({
     readOnly = false,
     snapshotId = null,
 }) => {
+    const { user } = useContext(AuthContext);
     const [selectedTool, setSelectedTool] = useState(null);
     const [selectedTooth, setSelectedTooth] = useState(null);
     const [planItems, setPlanItems] = useState([]);
@@ -84,6 +86,9 @@ const ClinicalHistoryOdontogram = ({
             }
 
             // 3. Save Pending Services to Budget
+            // We use the current session user (doctor) to attribute new work
+            const activeDoctorId = user?.id || null;
+
             for (const [key, services] of Object.entries(pendingServices)) {
                 if (!services || services.length === 0) continue;
 
@@ -107,7 +112,8 @@ const ClinicalHistoryOdontogram = ({
                         unit_price: svc.unit_price,
                         discount: 0,
                         discount_type: 'fixed',
-                        notes: null
+                        notes: null,
+                        doctor_id: activeDoctorId // Attributed to the doctor who SAVES the plan
                     }));
 
                     const { error: itemsError } = await supabase
@@ -126,7 +132,15 @@ const ClinicalHistoryOdontogram = ({
                 .update({ status: 'active' })
                 .eq('id', budgetId);
 
-            // 5. Save Treatment Plan Header
+            // 5. Update Patient's Primary Doctor to the one who managed this plan
+            if (activeDoctorId) {
+                await supabase
+                    .from('patients')
+                    .update({ doctor_id: activeDoctorId })
+                    .eq('id', patientId);
+            }
+
+            // 6. Save Treatment Plan Header
             // Join notes with bullets for storage
             const finalNotes = notesList
                 .map(n => n.trim())
@@ -151,6 +165,11 @@ const ClinicalHistoryOdontogram = ({
             setPendingServices({}); // Clear local services
             await loadPlanItems(); // Refresh items to show everything as persisted
 
+            // Refresh patient data in parent if needed (simplified here)
+            if (window.location.reload) {
+                // To force color update in sidebar/list
+                // In a real app, we'd use a shared state or refetch
+            }
         } catch (error) {
             console.error('Error saving plan:', error);
             showToast('Error al guardar: ' + error.message, 'error');
@@ -181,12 +200,12 @@ const ClinicalHistoryOdontogram = ({
     /*
     useEffect(() => {
         if (!patientId || findings.length === 0) return;
-
+ 
         const timer = setTimeout(async () => {
             await treatmentPlanApi.syncFromOdontogram(patientId, snapshotId, data);
             await loadPlanItems();
         }, 1500); // debounce 1.5s to avoid rapid calls while user is clicking
-
+ 
         return () => clearTimeout(timer);
     }, [findings, patientId, snapshotId]); 
     */

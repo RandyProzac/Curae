@@ -204,6 +204,13 @@ export default function ClinicalHistoryPage() {
         try {
             setLoading(true)
 
+            // Normalize date from DD/MM/YYYY to YYYY-MM-DD
+            let birthDate = formData.fechaNacimiento;
+            if (birthDate && birthDate.includes('/')) {
+                const [d, m, y] = birthDate.split('/');
+                birthDate = `${y}-${m}-${d}`;
+            }
+
             // 1. Update Patient Info
             await supabase.from('patients').update({
                 first_name: formData.nombres,
@@ -212,7 +219,7 @@ export default function ClinicalHistoryPage() {
                 email: formData.email,
                 dni: formData.dni,
                 address: formData.direccion,
-                date_of_birth: formData.fechaNacimiento,
+                date_of_birth: birthDate || null,
                 gender: formData.sexo,
             }).eq('id', patientId);
 

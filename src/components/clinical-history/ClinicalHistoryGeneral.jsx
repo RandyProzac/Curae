@@ -54,13 +54,68 @@ const ClinicalHistoryGeneral = ({ formData, updateField, updateAntecedente, onSa
                             />
                         </div>
                         <div className={styles.formGroup}>
+                            <label className={styles.label}>Fecha de Nacimiento</label>
+                            <input
+                                className={styles.input}
+                                type="text"
+                                placeholder="DD / MM / YYYY"
+                                maxLength={10}
+                                value={(() => {
+                                    // Convert YYYY-MM-DD to DD/MM/YYYY for display if it's not already masked
+                                    if (!formData.fechaNacimiento) return '';
+                                    if (formData.fechaNacimiento.includes('/')) return formData.fechaNacimiento;
+                                    const [y, m, d] = formData.fechaNacimiento.split('-');
+                                    if (!y || !m || !d) return formData.fechaNacimiento;
+                                    return `${d}/${m}/${y}`;
+                                })()}
+                                onChange={(e) => {
+                                    let val = e.target.value.replace(/\D/g, '');
+                                    if (val.length > 8) val = val.slice(0, 8);
+                                    let formatted = val;
+                                    if (val.length > 2) formatted = val.slice(0, 2) + '/' + val.slice(2);
+                                    if (val.length > 4) formatted = val.slice(0, 2) + '/' + val.slice(2, 4) + '/' + val.slice(4);
+
+                                    updateField('fechaNacimiento', formatted);
+
+                                    // Auto-calculate age
+                                    if (val.length === 8) {
+                                        const d = val.slice(0, 2);
+                                        const m = val.slice(2, 4);
+                                        const y = val.slice(4, 8);
+                                        const birth = new Date(`${y}-${m}-${d}`);
+                                        if (!isNaN(birth)) {
+                                            const age = Math.floor((new Date() - birth) / (365.25 * 24 * 60 * 60 * 1000));
+                                            if (age > 0) updateField('edad', age.toString());
+                                        }
+                                    }
+                                }}
+                            />
+                        </div>
+                        <div className={styles.formGroup}>
                             <label className={styles.label}>Edad</label>
                             <input
                                 className={styles.input}
-                                type="number"
-                                value={formData.edad}
-                                onChange={(e) => updateField('edad', e.target.value)}
-                                placeholder="Edad"
+                                type="text"
+                                value={(() => {
+                                    let birthDate = formData.fechaNacimiento;
+                                    if (!birthDate) return '';
+
+                                    // Convert DD/MM/YYYY to YYYY-MM-DD if needed for calculation
+                                    let y, m, d;
+                                    if (birthDate.includes('/')) {
+                                        [d, m, y] = birthDate.split('/');
+                                    } else {
+                                        [y, m, d] = birthDate.split('-');
+                                    }
+
+                                    const birth = new Date(`${y}-${m}-${d}`);
+                                    if (isNaN(birth)) return '';
+                                    const age = Math.floor((new Date() - birth) / (365.25 * 24 * 60 * 60 * 1000));
+                                    return age > 0 ? `${age} años` : '-';
+                                })()}
+                                readOnly
+                                style={{ background: '#f8fafc', color: '#64748b', cursor: 'default' }}
+                                placeholder="Auto"
                             />
                         </div>
                         <div className={styles.formGroup}>
@@ -74,15 +129,6 @@ const ClinicalHistoryGeneral = ({ formData, updateField, updateAntecedente, onSa
                                 <option value="M">Masculino</option>
                                 <option value="F">Femenino</option>
                             </select>
-                        </div>
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Fecha de Nacimiento</label>
-                            <input
-                                className={styles.input}
-                                type="date"
-                                value={formData.fechaNacimiento}
-                                onChange={(e) => updateField('fechaNacimiento', e.target.value)}
-                            />
                         </div>
                         <div className={styles.formGroup}>
                             <label className={styles.label}>Estado Civil</label>

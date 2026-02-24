@@ -25,7 +25,7 @@ const formatCurrency = (amount) => {
     }).format(amount || 0);
 };
 
-export default function TreatmentPlans({ patientId, patientName, patientPhone }) {
+export default function TreatmentPlans({ patientId, patientName, patientPhone, onUpdate }) {
     const [plans, setPlans] = useState([]);
     const [loading, setLoading] = useState(true);
     const [expandedPlanId, setExpandedPlanId] = useState(null);
@@ -108,7 +108,8 @@ export default function TreatmentPlans({ patientId, patientName, patientPhone })
                 .eq('id', planId);
 
             if (error) throw error;
-            fetchPlans(); // Refresh list
+            await fetchPlans(); // Refresh list
+            if (onUpdate) onUpdate(); // Sync sidebar header after change
         } catch (err) {
             console.error('Error updating status:', err);
             alert('Error al cambiar estado');
@@ -129,7 +130,8 @@ export default function TreatmentPlans({ patientId, patientName, patientPhone })
             if (expandedPlanId === deleteModal.planId) setExpandedPlanId(null);
 
             setDeleteModal({ open: false, planId: null, title: '' });
-            fetchPlans(); // Refresh list
+            await fetchPlans(); // Refresh list
+            if (onUpdate) onUpdate(); // Sync sidebar header
         } catch (err) {
             console.error('Error deleting plan:', err);
             alert('Error al eliminar el plan de tratamiento');
@@ -164,7 +166,13 @@ export default function TreatmentPlans({ patientId, patientName, patientPhone })
                 // For simplicity, let's assume we can sum it here.
                 let totalBudget = 0;
                 if (plan.budget?.items) {
-                    totalBudget = plan.budget.items.reduce((acc, item) => acc + (item.unit_price * item.quantity), 0);
+                    totalBudget = plan.budget.items.reduce((acc, item) => {
+                        const rawItem = (item.unit_price * item.quantity);
+                        const discountVal = parseFloat(item.discount || 0);
+                        const itemDiscount = (item.discount_type === 'percent')
+                            ? (rawItem * discountVal / 100) : discountVal;
+                        return acc + (rawItem - itemDiscount);
+                    }, 0);
                 }
 
                 return (
@@ -274,7 +282,10 @@ export default function TreatmentPlans({ patientId, patientName, patientPhone })
                                                 patientName={patientName}
                                                 patientPhone={patientPhone}
                                                 planTitle={plan.title}
-                                                onUpdate={fetchPlans} // Refresh on changes
+                                                onUpdate={async () => {
+                                                    await fetchPlans(); // Refresh local plan data
+                                                    if (onUpdate) onUpdate(); // Refresh parent sidebar header
+                                                }}
                                             />
                                         </div>
                                     )}

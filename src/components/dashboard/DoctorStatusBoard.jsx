@@ -1,11 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { Stethoscope, Coffee } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Stethoscope, Coffee, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import styles from './DoctorStatusBoard.module.css';
 
 const DoctorStatusBoard = () => {
     const [doctors, setDoctors] = useState([]);
     const [loading, setLoading] = useState(true);
+    const scrollRef = useRef(null);
+
+    const scroll = (direction) => {
+        if (scrollRef.current) {
+            const { scrollLeft, clientWidth } = scrollRef.current;
+            const scrollTo = direction === 'left'
+                ? scrollLeft - clientWidth * 0.8
+                : scrollLeft + clientWidth * 0.8;
+
+            scrollRef.current.scrollTo({
+                left: scrollTo,
+                behavior: 'smooth'
+            });
+        }
+    };
 
     const fetchStatus = async () => {
         try {
@@ -76,50 +91,68 @@ const DoctorStatusBoard = () => {
     if (loading) return null;
 
     return (
-        <div className={styles.statusContainer}>
-            {doctors.map(doc => {
-                // Ensure text is readable against their color theme
-                return (
-                    <div key={doc.id} className={styles.doctorCard}>
-                        {doc.isBusy ? (
-                            <>
-                                <div className={styles.busyAvatar} style={{ color: doc.color, backgroundColor: `${doc.color}20` }}>
-                                    <div className={styles.busyRing} style={{ borderColor: doc.color, opacity: 0.6 }}></div>
-                                    <Stethoscope size={24} />
-                                    <div className={styles.busyDot} style={{ backgroundColor: doc.color }}></div>
-                                </div>
-                                <div className={styles.info}>
-                                    <span className={styles.name}>{doc.name}</span>
-                                    <span className={styles.statusText} style={{ color: doc.color }}>
-                                        <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: doc.color, animation: 'pulseRing 1.5s infinite alternate' }} />
-                                        Atendiendo
-                                    </span>
-                                    <span className={styles.taskText}>
-                                        {doc.currentTask}
-                                    </span>
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                <div className={styles.freeAvatar}>
-                                    <span className={styles.zzz}>Z</span>
-                                    <span className={styles.zzz}>z</span>
-                                    <Coffee size={24} strokeWidth={1.5} />
-                                </div>
-                                <div className={styles.info}>
-                                    <span className={styles.name}>{doc.name}</span>
-                                    <span className={`${styles.statusText} ${styles.freeText}`}>
-                                        En descanso
-                                    </span>
-                                    <span className={styles.taskText}>
-                                        Disponible
-                                    </span>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                );
-            })}
+        <div className={styles.wrapper}>
+            <button
+                className={`${styles.navBtn} ${styles.prevBtn}`}
+                onClick={() => scroll('left')}
+                aria-label="Anterior"
+            >
+                <ChevronLeft size={24} />
+            </button>
+
+            <div className={styles.statusContainer} ref={scrollRef}>
+                {doctors.map(doc => {
+                    // Ensure text is readable against their color theme
+                    return (
+                        <div key={doc.id} className={styles.doctorCard}>
+                            {doc.isBusy ? (
+                                <>
+                                    <div className={styles.busyAvatar} style={{ color: doc.color, backgroundColor: `${doc.color}20` }}>
+                                        <div className={styles.busyRing} style={{ borderColor: doc.color, opacity: 0.6 }}></div>
+                                        <Stethoscope size={24} />
+                                        <div className={styles.busyDot} style={{ backgroundColor: doc.color }}></div>
+                                    </div>
+                                    <div className={styles.info}>
+                                        <span className={styles.name}>{doc.name}</span>
+                                        <span className={styles.statusText} style={{ color: doc.color }}>
+                                            <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: doc.color, animation: 'pulseRing 1.5s infinite alternate' }} />
+                                            Atendiendo
+                                        </span>
+                                        <span className={styles.taskText}>
+                                            {doc.currentTask}
+                                        </span>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className={styles.freeAvatar}>
+                                        <span className={styles.zzz}>Z</span>
+                                        <span className={styles.zzz}>z</span>
+                                        <Coffee size={24} strokeWidth={1.5} />
+                                    </div>
+                                    <div className={styles.info}>
+                                        <span className={styles.name}>{doc.name}</span>
+                                        <span className={`${styles.statusText} ${styles.freeText}`}>
+                                            En descanso
+                                        </span>
+                                        <span className={styles.taskText}>
+                                            Disponible
+                                        </span>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+
+            <button
+                className={`${styles.navBtn} ${styles.nextBtn}`}
+                onClick={() => scroll('right')}
+                aria-label="Siguiente"
+            >
+                <ChevronRight size={24} />
+            </button>
         </div>
     );
 };

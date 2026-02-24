@@ -38,6 +38,7 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
 
     // Confirm Modal
     const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null });
+    const [isPaying, setIsPaying] = useState(false);
 
     // Print state
     const [printingBudget, setPrintingBudget] = useState(null);
@@ -139,24 +140,44 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
 
     const handlePayment = async () => {
         const amount = parseFloat(paymentAmount);
-        if (!amount || amount <= 0 || !paymentModal.item) return;
+        const item = paymentModal.item;
+
+        if (!amount || amount <= 0 || !item || isPaying) return;
+
+        // Validation: Prevent overpayment
+        const rawPrice = parseFloat(item.unit_price) * (item.quantity || 1);
+        const discountVal = parseFloat(item.discount || 0);
+        const itemDiscount = (item.discount_type === 'percent')
+            ? (rawPrice * discountVal / 100) : discountVal;
+        const subtotal = rawPrice - itemDiscount;
+        const paidSoFar = parseFloat(item.paid_amount || 0);
+        const remaining = Math.max(0, subtotal - paidSoFar);
+
+        if (amount > (remaining + 0.001)) {
+            alert(`El monto (S/ ${amount.toFixed(2)}) supera el saldo pendiente (S/ ${remaining.toFixed(2)}).`);
+            return;
+        }
+
         try {
+            setIsPaying(true);
             await paymentsApi.create({
-                budget_item_id: paymentModal.item.id,
+                budget_item_id: item.id,
                 amount,
                 method: paymentMethod,
                 notes: paymentNotes || null,
-                // date: new Date().toLocaleDateString('en-CA'), // Removed: 'date' column does not exist in 'payments' table
             });
-            // Update local state or refetch?
-            // Since we rely on parent to fetch, we just call onUpdate
+
             setPaymentModal({ open: false, item: null });
             setPaymentAmount('');
             setPaymentNotes('');
-            onUpdate?.();
+
+            // Critical: wait for parent to fetch fresh data
+            if (onUpdate) await onUpdate();
         } catch (err) {
             console.error('Error registering payment:', err);
             alert(`Error al registrar pago: ${err.message || JSON.stringify(err)}`);
+        } finally {
+            setIsPaying(false);
         }
     };
 
@@ -452,7 +473,13 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                                 </div>
                                 <div style={S.modalActions}>
                                     <button style={S.cancelBtn} onClick={() => setPaymentModal({ open: false, item: null })}>Cancelar</button>
-                                    <button style={S.confirmBtn} onClick={handlePayment}>Confirmar Pago</button>
+                                    <button
+                                        style={{ ...S.confirmBtn, opacity: isPaying ? 0.7 : 1, cursor: isPaying ? 'not-allowed' : 'pointer' }}
+                                        onClick={handlePayment}
+                                        disabled={isPaying}
+                                    >
+                                        {isPaying ? 'Procesando...' : 'Confirmar Pago'}
+                                    </button>
                                 </div>
                             </div>
                         </div>
