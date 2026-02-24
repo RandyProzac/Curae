@@ -99,6 +99,24 @@ export const doctorsApi = {
         return data;
     },
 
+    async uploadSignature(file) {
+        if (!file) return null;
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+            .from('signatures')
+            .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage
+            .from('signatures')
+            .getPublicUrl(fileName);
+
+        return data.publicUrl;
+    },
+
     async update(id, updates) {
         const { data, error } = await supabase
             .from('doctors')

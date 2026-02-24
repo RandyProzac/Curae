@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Check } from 'lucide-react';
+import { X, Save, Check, Upload } from 'lucide-react';
 import styles from './DoctorModal.module.css';
 
 const PRESET_COLORS = [
@@ -15,12 +15,14 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null }) => {
         name: '',
         specialty: '',
         dni: '',
+        cop: '',
         phone: '',
         email: '',
         join_date: new Date().toISOString().split('T')[0],
         color: PRESET_COLORS[0],
         active: true
     });
+    const [signatureFile, setSignatureFile] = useState(null);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -29,11 +31,13 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null }) => {
                 name: doctor.name || '',
                 specialty: doctor.specialty || '',
                 dni: doctor.dni || '',
+                cop: doctor.cop || '',
                 phone: doctor.phone || '',
                 email: doctor.email || '',
                 join_date: doctor.join_date || new Date().toISOString().split('T')[0],
                 color: doctor.color || PRESET_COLORS[0],
-                active: doctor.active ?? true
+                active: doctor.active ?? true,
+                signature_url: doctor.signature_url
             });
         } else {
             // Reset for new
@@ -41,20 +45,23 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null }) => {
                 name: '',
                 specialty: '',
                 dni: '',
+                cop: '',
                 phone: '',
                 email: '',
                 join_date: new Date().toISOString().split('T')[0],
                 color: PRESET_COLORS[0],
-                active: true
+                active: true,
+                signature_url: null
             });
         }
+        setSignatureFile(null);
     }, [doctor, isOpen]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
             setLoading(true);
-            await onSave(formData);
+            await onSave({ ...formData, signatureFile });
             onClose();
         } catch (error) {
             console.error(error);
@@ -88,7 +95,7 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null }) => {
                         />
                     </div>
 
-                    <div className={styles.row}>
+                    <div className={styles.row3}>
                         <div className={styles.formGroup}>
                             <label className={styles.label}>Especialidad</label>
                             <input
@@ -105,6 +112,15 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null }) => {
                                 value={formData.dni}
                                 onChange={e => setFormData({ ...formData, dni: e.target.value })}
                                 placeholder="12345678"
+                            />
+                        </div>
+                        <div className={styles.formGroup}>
+                            <label className={styles.label}>COP</label>
+                            <input
+                                className={styles.input}
+                                value={formData.cop}
+                                onChange={e => setFormData({ ...formData, cop: e.target.value })}
+                                placeholder="123456"
                             />
                         </div>
                     </div>
@@ -152,6 +168,42 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null }) => {
                                 <option value="false">Inactivo</option>
                             </select>
                         </div>
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label className={styles.label}>Firma del Doctor (PNG Transparente)</label>
+                        <div className={styles.signatureUploadContainer}>
+                            <div className={styles.fileUploadWrapper}>
+                                <input
+                                    type="file"
+                                    id="signature-upload"
+                                    accept="image/png"
+                                    onChange={(e) => {
+                                        if (e.target.files && e.target.files[0]) {
+                                            setSignatureFile(e.target.files[0]);
+                                        }
+                                    }}
+                                    className={styles.fileInputHidden}
+                                />
+                                <label htmlFor="signature-upload" className={styles.fileUploadButton}>
+                                    <Upload size={16} /> Seleccionar archivo
+                                </label>
+                                <span className={styles.fileName}>
+                                    {signatureFile ? signatureFile.name : 'Sin archivos seleccionados'}
+                                </span>
+                            </div>
+                            {(signatureFile || formData.signature_url) && (
+                                <div className={styles.signaturePreview}>
+                                    <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Vista previa:</p>
+                                    <img
+                                        src={signatureFile ? URL.createObjectURL(signatureFile) : formData.signature_url}
+                                        alt="Firma"
+                                        style={{ maxHeight: '60px', border: '1px dashed #cbd5e1', padding: '4px', borderRadius: '4px', display: 'block', backgroundColor: '#f8fafc' }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                        <small style={{ color: '#94a3b8', fontSize: '12px' }}>Obligatorio para que la firma aparezca en los presupuestos impresos.</small>
                     </div>
 
                     <div className={styles.formGroup}>

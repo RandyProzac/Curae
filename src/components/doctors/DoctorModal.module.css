@@ -14,7 +14,7 @@
 
 .modal {
     background: var(--bg-card);
-    width: 500px;
+    width: 650px;
     max-width: 90%;
     border-radius: 16px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
@@ -179,6 +179,12 @@
     gap: 16px;
 }
 
+.row3 {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 16px;
+}
+
 .footer {
     padding: 20px 24px;
     background: var(--bg-hover);
@@ -218,4 +224,50 @@
 .saveButton:disabled {
     opacity: 0.7;
     cursor: not-allowed;
+}
+
+.signatureUploadContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.fileUploadWrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.fileInputHidden {
+    display: none;
+}
+
+.fileUploadButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--bg-card);
+    border: 1px dashed var(--border-subtle);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.fileUploadButton:hover {
+    background: var(--bg-hover);
+    border-color: var(--text-tertiary);
+    color: var(--text-primary);
+}
+
+.fileName {
+    font-size: 0.875rem;
+    color: var(--text-tertiary);
+}
+
+.signaturePreview {
+    margin-top: 4px;
 }

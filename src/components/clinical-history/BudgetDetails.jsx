@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     ChevronDown,
     ChevronRight,
@@ -11,9 +11,10 @@ import {
     X,
     Pencil,
 } from 'lucide-react';
-import { budgetsApi, paymentsApi } from '../../lib/supabase';
+import { budgetsApi, paymentsApi, doctorsApi } from '../../lib/supabase';
 import ServiceSelector from '../appointments/ServiceSelector';
 import PrintableBudget from '../common/PrintableBudget';
+import { useAuth } from '../../contexts/useAuth';
 
 /**
  * BudgetDetails
@@ -21,6 +22,7 @@ import PrintableBudget from '../common/PrintableBudget';
  * Used in TreatmentPlans to show the associated budget.
  */
 export default function BudgetDetails({ budget, patientId, patientName, patientPhone, planTitle, onUpdate }) {
+    const { user } = useAuth();
     const [isExpanded, setIsExpanded] = useState(true); // Default expanded for "Superpresupuesto" look
     const [addingItem, setAddingItem] = useState(false);
 
@@ -42,16 +44,75 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
 
     // Print state
     const [printingBudget, setPrintingBudget] = useState(null);
-    const [printingItemId, setPrintingItemId] = useState(null);
+    const [printingItemIds, setPrintingItemIds] = useState(null); // Changed to array
+    const [realActiveDoctor, setRealActiveDoctor] = useState(user);
 
-    const handlePrint = (printBudget, itemId = null) => {
+    const items = budget?.items || budget?.budget_items || [];
+    const [selectedForPrint, setSelectedForPrint] = useState([]);
+
+    useEffect(() => {
+        if (items) {
+            setSelectedForPrint(items.map(item => item.id));
+        }
+    }, [items?.length]);
+
+    // Preload the active doctor's profile on mount to cache the signature image
+    // This solves the issue where Chromium drops images from print preview if rendered too fast
+    useEffect(() => {
+        const fetchInitialDoctor = async () => {
+            if (user?.name) {
+                try {
+                    const docs = await doctorsApi.getAll();
+                    const userParts = user.name.toLowerCase().split(' ');
+                    const userFirst = userParts[0];
+                    const userLast = userParts[userParts.length - 1];
+
+                    const match = docs.find(d => {
+                        const dbName = d.name.toLowerCase();
+                        return dbName === user.name.toLowerCase() ||
+                            (dbName.includes(userFirst) && dbName.includes(userLast));
+                    });
+
+                    if (match) setRealActiveDoctor(match);
+                } catch (e) {
+                    console.error('Error preloading doctor profile for print', e);
+                }
+            }
+        };
+        fetchInitialDoctor();
+    }, [user?.name]);
+
+    const handlePrint = async (printBudget, itemIds = null) => {
+        // We already preloaded the doctor, but we re-fetch just in case it changed recently
+        try {
+            if (user?.name) {
+                const docs = await doctorsApi.getAll();
+                // Robust matching to handle slight name variations (e.g., "Luciana Renata..." vs "Luciana...")
+                const userParts = user.name.toLowerCase().split(' ');
+                const userFirst = userParts[0];
+                const userLast = userParts[userParts.length - 1];
+
+                const match = docs.find(d => {
+                    const dbName = d.name.toLowerCase();
+                    return dbName === user.name.toLowerCase() ||
+                        (dbName.includes(userFirst) && dbName.includes(userLast));
+                });
+
+                if (match) setRealActiveDoctor(match);
+            }
+        } catch (e) {
+            console.error('Error fetching latest doctor profile for print', e);
+        }
+
         setPrintingBudget(printBudget);
-        setPrintingItemId(itemId);
+        setPrintingItemIds(itemIds);
+
+        // Give the DOM enough time to load the Logo and Signature PNG before opening print preview
         setTimeout(() => {
             window.print();
             setPrintingBudget(null);
-            setPrintingItemId(null);
-        }, 500);
+            setPrintingItemIds(null);
+        }, 1200);
     };
 
     // Inline Discount Editing
@@ -96,7 +157,6 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
     };
 
     const totals = getBudgetTotals(budget.items || []);
-    const items = budget.items || [];
 
     // Actions
     const handleAddItem = async () => {
@@ -121,18 +181,23 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
         }
     };
 
-    const handleDeleteItem = (itemId) => {
+    const handleDeleteSelectedItems = () => {
+        if (selectedForPrint.length === 0) return;
         setConfirmModal({
             open: true,
-            title: 'Eliminar Item',
-            message: '¿Eliminar este servicio del presupuesto?',
+            title: 'Eliminar Items Seleccionados',
+            message: `¿Eliminar los ${selectedForPrint.length} servicios seleccionados del presupuesto?`,
             onConfirm: async () => {
                 try {
-                    await budgetsApi.deleteItem(itemId);
+                    // Create an array of promises to delete all selected items
+                    const deletePromises = selectedForPrint.map(itemId => budgetsApi.deleteItem(itemId));
+                    await Promise.all(deletePromises);
+
                     setConfirmModal(prev => ({ ...prev, open: false }));
+                    setSelectedForPrint([]); // Clear selection after deletion
                     onUpdate?.();
                 } catch (err) {
-                    console.error('Error deleting item:', err);
+                    console.error('Error deleting items:', err);
                 }
             }
         });
@@ -211,6 +276,17 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                     <table style={S.table}>
                         <thead>
                             <tr>
+                                <th style={{ ...S.th, width: '30px', textAlign: 'center' }} title="Imprimir">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedForPrint.length === items.length && items.length > 0}
+                                        onChange={(e) => {
+                                            if (e.target.checked) setSelectedForPrint(items.map(i => i.id));
+                                            else setSelectedForPrint([]);
+                                        }}
+                                        style={{ accentColor: '#0f766e', cursor: 'pointer' }}
+                                    />
+                                </th>
                                 <th style={S.th}>Item</th>
                                 <th style={S.th}>Nota</th>
                                 <th style={S.th}>Dscto.</th>
@@ -233,6 +309,17 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
 
                                 return (
                                     <tr key={item.id} style={S.tr}>
+                                        <td style={{ ...S.td, textAlign: 'center' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedForPrint.includes(item.id)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) setSelectedForPrint([...selectedForPrint, item.id]);
+                                                    else setSelectedForPrint(selectedForPrint.filter(id => id !== item.id));
+                                                }}
+                                                style={{ accentColor: '#0f766e', cursor: 'pointer' }}
+                                            />
+                                        </td>
                                         <td style={{ ...S.td, fontWeight: '600' }}>{item.service_name}</td>
                                         <td style={{ ...S.td, color: '#64748b', fontSize: '12px' }}>{item.tooth_number || '-'}</td>
                                         <td style={{ ...S.td, fontSize: '12px', whiteSpace: 'nowrap', minWidth: '120px' }}>
@@ -262,11 +349,11 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                                             ) : (
                                                 <span
                                                     onClick={() => startEditDiscount(item)}
-                                                    style={{ cursor: 'pointer', color: itemDiscount > 0 ? '#f59e0b' : '#cbd5e1', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                                    style={{ cursor: 'pointer', color: itemDiscount > 0 ? '#f59e0b' : '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                                                     title="Click para editar descuento"
                                                 >
                                                     {itemDiscount > 0 ? `- S/ ${itemDiscount.toFixed(2)}` : '-'}
-                                                    <Pencil size={11} style={{ opacity: 0.5 }} />
+                                                    <Pencil size={13} style={{ opacity: 0.8 }} />
                                                 </span>
                                             )}
                                         </td>
@@ -291,19 +378,6 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                                                 ) : (
                                                     <span style={S.paidBadge}>✓ Pagado</span>
                                                 )}
-                                                <button
-                                                    style={S.deleteItemBtn}
-                                                    onClick={() => handleDeleteItem(item.id)}
-                                                >
-                                                    <Trash2 size={13} />
-                                                </button>
-                                                <button
-                                                    style={{ ...S.deleteItemBtn, color: '#64748b' }}
-                                                    onClick={() => handlePrint(budget, item.id)}
-                                                    title="Imprimir solo este item"
-                                                >
-                                                    <Printer size={13} />
-                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -403,9 +477,32 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                     {/* Footer Summary */}
                     <div style={S.footer}>
                         <div style={S.footerActions}>
-                            <button style={S.actionBtn} onClick={() => handlePrint(budget)}>
-                                <Printer size={16} /> Imprimir
-                            </button>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                {selectedForPrint.length > 0 && (
+                                    <button
+                                        style={{ ...S.actionBtn, color: '#ef4444', borderColor: '#ef4444', background: '#fee2e2' }}
+                                        onClick={handleDeleteSelectedItems}
+                                    >
+                                        <Trash2 size={16} />
+                                        Eliminar ({selectedForPrint.length})
+                                    </button>
+                                )}
+                                <button
+                                    style={{
+                                        ...S.actionBtn,
+                                        opacity: selectedForPrint.length === 0 ? 0.5 : 1,
+                                        cursor: selectedForPrint.length === 0 ? 'not-allowed' : 'pointer',
+                                        background: selectedForPrint.length > 0 ? '#0f766e' : 'transparent',
+                                        color: selectedForPrint.length > 0 ? 'white' : '#64748b',
+                                        border: selectedForPrint.length > 0 ? 'none' : '1px solid #e2e8f0'
+                                    }}
+                                    onClick={() => handlePrint(budget, selectedForPrint)}
+                                    disabled={selectedForPrint.length === 0}
+                                >
+                                    <Printer size={16} />
+                                    Imprimir ({selectedForPrint.length})
+                                </button>
+                            </div>
                             <button
                                 style={{ ...S.actionBtn, color: '#25d366', borderColor: '#25d366' }}
                                 onClick={() => {
@@ -511,7 +608,19 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                     patientPhone={patientPhone}
                     budget={printingBudget}
                     planTitle={planTitle}
-                    printItemId={printingItemId}
+                    printItemIds={printingItemIds}
+                    activeDoctor={realActiveDoctor}
+                />
+            )}
+
+            {/* Secret image preload to ensure the signature is cached before 
+                printing. Display:none causes browsers to aggressively delay 
+                image fetching, so we use opacity/position instead. */}
+            {realActiveDoctor?.signature_url && (
+                <img
+                    src={realActiveDoctor.signature_url}
+                    alt="preload"
+                    style={{ position: 'absolute', width: '1px', height: '1px', opacity: 0.01, zIndex: -100 }}
                 />
             )}
         </div >

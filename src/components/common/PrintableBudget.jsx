@@ -1,21 +1,22 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import styles from './PrintableBudget.module.css';
+import logo from '../../assets/logo_curae.svg';
 
 /**
  * PrintableBudget
  * A hidden component that only appears when printing.
- * Takes patient data, budget data, and optionally a single itemId to print.
+ * Takes patient data, budget data, active doctor, and optionally an array of itemIds to print.
  */
-const PrintableBudget = ({ patientName, patientPhone, budget, planTitle, printItemId }) => {
+const PrintableBudget = ({ patientName, patientPhone, budget, planTitle, printItemIds, activeDoctor }) => {
     if (!budget) return null;
 
     // Higher-level items array that handles both naming conventions
     const items = budget.budget_items || budget.items || [];
 
-    // Filter items if a specific itemId is provided
-    const itemsToPrint = printItemId
-        ? items.filter(item => item.id === printItemId)
+    // Filter items if specific printItemIds are provided
+    const itemsToPrint = (printItemIds && Array.isArray(printItemIds) && printItemIds.length > 0)
+        ? items.filter(item => printItemIds.includes(item.id))
         : items;
 
     if (itemsToPrint.length === 0) return null;
@@ -49,15 +50,24 @@ const PrintableBudget = ({ patientName, patientPhone, budget, planTitle, printIt
 
     return createPortal(
         <div id="printable-budget-container" className={styles.printableWrapper}>
-            {/* Header with Logo and Info */}
+            {/* Header matches reference PDF */}
             <div className={styles.header}>
-                <div className={styles.logoSection}>
-                    <h1 className={styles.logoText}>Curae</h1>
-                    <p className={styles.clinicInfo}>Centro Odontológico</p>
+                <div className={styles.headerLeft}>
+                    <img src={logo} alt="Estudio Dental Curae" className={styles.logoImg} />
                 </div>
-                <div className={styles.documentInfo}>
-                    <h2 className={styles.documentTitle}>Presupuesto</h2>
-                    <p className={styles.date}>Fecha: {currentDate}</p>
+                <div className={styles.headerRight}>
+                    <h1 className={styles.clinicName}>Estudio Dental Curae</h1>
+                    <p className={styles.doctorInfo}>
+                        <strong>Dra.</strong> {activeDoctor?.name || 'Luciana Jimenez Aranzaens'}
+                        {activeDoctor?.specialty && <>, <strong>Esp.</strong> {activeDoctor.specialty}</>}
+                        {activeDoctor?.cop && <>, <strong>COP Profesional:</strong> {activeDoctor.cop}</>}
+                    </p>
+                    <p className={styles.dateInfo}>
+                        <strong>Fecha impresión:</strong> {currentDate}
+                    </p>
+                    <p className={styles.idInfo}>
+                        <strong>ID:</strong> {budget.id?.substring(0, 8).toUpperCase()}
+                    </p>
                 </div>
             </div>
 
@@ -117,35 +127,78 @@ const PrintableBudget = ({ patientName, patientPhone, budget, planTitle, printIt
                 </table>
             </div>
 
-            <div className={styles.totalsSection}>
+            <div className={styles.summarySection}>
                 <div className={styles.totalsBox}>
-                    <div className={styles.totalRow}>
-                        <span>Subtotal:</span>
+                    <h3>Resumen del Presupuesto:</h3>
+                    <div className={styles.summaryRow}>
+                        <span>Prestaciones Clínicas</span>
+                        <span>S/ {subtotal.toFixed(2)}</span>
+                    </div>
+                    <div className={`${styles.summaryRow} ${styles.boldRow}`}>
+                        <span>Subtotal</span>
                         <span>S/ {subtotal.toFixed(2)}</span>
                     </div>
                     {totalDiscount > 0 && (
-                        <div className={styles.totalRow}>
-                            <span>Descuento:</span>
-                            <span>- S/ {totalDiscount.toFixed(2)}</span>
+                        <div className={styles.summaryRow}>
+                            <span>Descuento total</span>
+                            <span>(-) S/ {totalDiscount.toFixed(2)}</span>
                         </div>
                     )}
-                    <div className={`${styles.totalRow} ${styles.grandTotal}`}>
-                        <span>Total:</span>
+                    <br />
+
+                    <div className={`${styles.summaryRow} ${styles.grandTotalRow} ${styles.grayBg}`}>
+                        <span>Total del presupuesto</span>
                         <span>S/ {total.toFixed(2)}</span>
+                    </div>
+                </div>
+
+                <div className={styles.totalsBox}>
+                    <h3>Estado de cuenta:</h3>
+                    <div className={styles.summaryRow}>
+                        <span>Total del presupuesto</span>
+                        <span>S/ {total.toFixed(2)}</span>
+                    </div>
+                    <div className={styles.summaryRow}>
+                        <span>Abonos del paciente</span>
+                        <span>(-) S/ {paid.toFixed(2)}</span>
+                    </div>
+                    <br />
+
+                    <div className={`${styles.summaryRow} ${styles.grandTotalRow} ${styles.grayBg}`}>
+                        <span>Total por pagar</span>
+                        <span>S/ {balance.toFixed(2)}</span>
                     </div>
                 </div>
             </div>
 
             <div className={styles.footerNotes}>
-                <p>Este documento es un presupuesto orientativo y está sujeto a reevaluación clínica. Tiene una validez de 30 días.</p>
+                <p>Este documento es un presupuesto orientativo y está sujeto a reevaluación clínica. Tiene una validez de 30 días calendario.</p>
+
                 <div className={styles.signatures}>
-                    <div className={styles.signatureLine}>
+                    <div className={styles.signatureBlock}>
+                        <div className={styles.signatureBox}>
+                            {activeDoctor?.signature_url && (
+                                <img
+                                    src={activeDoctor.signature_url}
+                                    alt={`Firma ${activeDoctor.name}`}
+                                    className={styles.signatureImage}
+                                />
+                            )}
+                        </div>
                         <div className={styles.line}></div>
-                        <p>Firma del Odontólogo</p>
+                        <p className={styles.signatureName}>{activeDoctor?.name || 'Dr. Principal'}</p>
+                        <p className={styles.signatureTitle}>Firma del Odontólogo</p>
+                        {activeDoctor?.cop && (
+                            <p className={styles.signatureCop}>C.O.P: {activeDoctor.cop}</p>
+                        )}
                     </div>
-                    <div className={styles.signatureLine}>
+
+                    <div className={styles.signatureBlock}>
+                        <div className={styles.signatureBox}></div>
                         <div className={styles.line}></div>
-                        <p>Firma del Paciente</p>
+                        <p className={styles.signatureName}>{patientName}</p>
+                        <p className={styles.signatureTitle}>Firma del Paciente</p>
+                        {/* Space for DNI can be added here if needed */}
                     </div>
                 </div>
             </div>

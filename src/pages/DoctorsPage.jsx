@@ -68,18 +68,28 @@ const DoctorsPage = () => {
 
     const handleSave = async (formData) => {
         try {
+            const { signatureFile, ...doctorData } = formData;
+
+            // Handle signature upload if there's a new file
+            if (signatureFile) {
+                const url = await doctorsApi.uploadSignature(signatureFile);
+                if (url) {
+                    doctorData.signature_url = url;
+                }
+            }
+
             if (editingDoctor) {
                 // Update doctor
-                const updated = await doctorsApi.update(editingDoctor.id, formData);
+                const updated = await doctorsApi.update(editingDoctor.id, doctorData);
 
                 // Cascade: Update all events of this doctor if color changed
-                if (editingDoctor.color !== formData.color) {
-                    await doctorsApi.updateEventColors(editingDoctor.id, formData.color);
+                if (editingDoctor.color !== doctorData.color) {
+                    await doctorsApi.updateEventColors(editingDoctor.id, doctorData.color);
                 }
 
                 setDoctors(prev => prev.map(d => d.id === updated.id ? updated : d));
             } else {
-                const created = await doctorsApi.create(formData);
+                const created = await doctorsApi.create(doctorData);
                 setDoctors(prev => [...prev, created]);
             }
             await fetchDoctors();

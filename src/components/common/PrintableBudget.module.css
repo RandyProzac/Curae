@@ -27,42 +27,53 @@
     .header {
         display: flex;
         justify-content: space-between;
-        align-items: flex-end;
+        align-items: center;
+        /* Center to match logo with text */
         border-bottom: 2px solid #0f766e;
-        padding-bottom: 15px;
+        padding-bottom: 20px;
         margin-bottom: 25px;
     }
 
-    .logoText {
-        font-size: 28pt;
-        font-weight: bold;
-        color: #0f766e !important;
-        margin: 0;
-        line-height: 1;
-        letter-spacing: -1px;
+    .headerLeft {
+        width: 150px;
+        display: flex;
+        align-items: center;
     }
 
-    .clinicInfo {
-        margin: 5px 0 0 0;
-        color: #666;
-        font-size: 10pt;
-        text-transform: uppercase;
-        letter-spacing: 1px;
+    .logoImg {
+        width: 100%;
+        height: auto;
+        max-height: 80px;
+        object-fit: contain;
+        object-position: left center;
     }
 
-    .documentTitle {
-        font-size: 18pt;
-        color: #333;
+    .headerRight {
+        text-align: right;
+        flex: 1;
+    }
+
+    .clinicName {
+        font-size: 26pt;
+        color: #000;
         margin: 0 0 5px 0;
-        text-transform: uppercase;
-        text-align: right;
+        font-weight: 800;
+        letter-spacing: -0.5px;
     }
 
-    .date {
-        margin: 0;
-        color: #666;
-        text-align: right;
+    .doctorInfo {
+        margin: 0 0 2px 0;
+        color: #1e293b;
+        font-size: 11pt;
     }
+
+    .dateInfo,
+    .idInfo {
+        margin: 0 0 2px 0;
+        color: #1e293b;
+        font-size: 11pt;
+    }
+
 
     /* Patient Info */
     .patientInfo {
@@ -92,9 +103,9 @@
         color: #0f172a;
     }
 
-    /* Table */
+    /* Table - Compact & Clean */
     .tableContainer {
-        margin-bottom: 25px;
+        margin-bottom: 40px;
     }
 
     .table {
@@ -103,22 +114,22 @@
     }
 
     .table th {
-        background-color: #f1f5f9 !important;
-        color: #334155;
+        color: #0f172a;
         font-weight: bold;
-        padding: 10px;
-        border: 1px solid #cbd5e1;
+        padding: 8px 10px;
+        border-top: 1px solid #1e293b;
+        border-bottom: 1px solid #1e293b;
         text-align: left;
     }
 
     .table td {
-        padding: 10px;
-        border: 1px solid #cbd5e1;
-        color: #334155;
+        padding: 6px 10px;
+        color: #1e293b;
+        border-bottom: 1px solid #e2e8f0;
     }
 
     .conceptCol {
-        font-weight: bold;
+        font-weight: 500;
     }
 
     .textRight {
@@ -129,37 +140,47 @@
         text-align: center;
     }
 
-    /* Totals */
-    .totalsSection {
+    /* Summaries Section (Resumen & Estado de Cuenta) */
+    .summarySection {
         display: flex;
-        justify-content: flex-end;
+        justify-content: space-between;
         margin-bottom: 40px;
+        gap: 40px;
+        page-break-inside: avoid;
     }
 
     .totalsBox {
-        width: 300px;
-        border: 1px solid #cbd5e1;
-        border-radius: 8px;
-        padding: 15px;
-        background: #f8fafc;
+        flex: 1;
     }
 
-    .totalRow {
+    .totalsBox h3 {
+        font-size: 16pt;
+        color: #000;
+        margin: 0 0 15px 0;
+        font-weight: bold;
+    }
+
+    .summaryRow {
         display: flex;
         justify-content: space-between;
-        margin-bottom: 10px;
+        padding: 8px 10px;
+        font-size: 11pt;
     }
 
-    .totalRow:last-child {
-        margin-bottom: 0;
-    }
-
-    .grandTotal {
-        border-top: 1px solid #cbd5e1;
-        padding-top: 10px;
+    .boldRow {
         font-weight: bold;
-        font-size: 14pt;
-        color: #0f766e;
+    }
+
+    .grayBg {
+        background-color: #f1f5f9 !important;
+        /* Extremely light gray background */
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .grandTotalRow {
+        font-weight: bold;
+        font-size: 12pt;
     }
 
     /* Footer Notes */
@@ -176,24 +197,56 @@
 
     .signatures {
         display: flex;
-        justify-content: space-around;
-        margin-top: 60px;
+        justify-content: space-evenly;
+        margin-top: 50px;
+        page-break-inside: avoid;
     }
 
-    .signatureLine {
-        width: 200px;
+    .signatureBlock {
+        width: 280px;
         text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .signatureBox {
+        height: 80px;
+        /* Space for the signature image or manual signing */
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        margin-bottom: 5px;
+    }
+
+    .signatureImage {
+        max-width: 150px;
+        max-height: 70px;
+        object-fit: contain;
     }
 
     .line {
-        border-top: 1px solid #333;
-        margin-bottom: 10px;
+        border-top: 1px solid #1e293b;
+        margin-bottom: 8px;
+        width: 100%;
     }
 
-    .signatureLine p {
+    .signatureName {
+        margin: 0 0 2px 0;
+        font-size: 10pt;
+        color: #0f172a;
+        font-weight: bold;
+    }
+
+    .signatureTitle {
+        margin: 0 0 2px 0;
+        font-size: 9pt;
+        color: #64748b;
+    }
+
+    .signatureCop {
         margin: 0;
         font-size: 9pt;
-        color: #333;
-        font-weight: bold;
+        color: #64748b;
     }
 }
