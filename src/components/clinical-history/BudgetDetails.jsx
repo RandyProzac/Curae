@@ -35,7 +35,7 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
     // Payment State
     const [paymentModal, setPaymentModal] = useState({ open: false, item: null });
     const [paymentAmount, setPaymentAmount] = useState('');
-    const [paymentMethod, setPaymentMethod] = useState('efectivo');
+    const [paymentMethod, setPaymentMethod] = useState('VISA');
     const [paymentNotes, setPaymentNotes] = useState('');
 
     // Confirm Modal
@@ -234,6 +234,7 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
 
             setPaymentModal({ open: false, item: null });
             setPaymentAmount('');
+            setPaymentMethod('VISA');
             setPaymentNotes('');
 
             // Critical: wait for parent to fetch fresh data
@@ -562,10 +563,11 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                                 <div style={S.fieldGroup}>
                                     <label style={S.fieldLabel}>Método de Pago</label>
                                     <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} style={S.fieldInput}>
-                                        <option value="efectivo">Efectivo</option>
-                                        <option value="tarjeta">Tarjeta</option>
-                                        <option value="transferencia">Transferencia</option>
-                                        <option value="yape">Yape / Plin</option>
+                                        <option value="VISA">VISA</option>
+                                        <option value="BCP">BCP</option>
+                                        <option value="BBVA">BBVA</option>
+                                        <option value="INTERBANK">INTERBANK</option>
+                                        <option value="EFECTIVO">EFECTIVO</option>
                                     </select>
                                 </div>
                                 <div style={S.modalActions}>

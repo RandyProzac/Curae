@@ -10,7 +10,7 @@ const ExpenseModal = ({ isOpen, onClose, onSave, expense, defaultType = 'VARIABL
         amount: '',
         category: '',
         supplier: '',
-        payment_method: 'Efectivo',
+        payment_method: 'VISA',
         status: 'pagado',
         description: '',
         notes: '',
@@ -41,7 +41,7 @@ const ExpenseModal = ({ isOpen, onClose, onSave, expense, defaultType = 'VARIABL
                     amount: '',
                     category: '',
                     supplier: '',
-                    payment_method: 'Efectivo',
+                    payment_method: 'VISA',
                     status: 'pagado',
                     description: '',
                     notes: '',
@@ -168,10 +168,11 @@ const ExpenseModal = ({ isOpen, onClose, onSave, expense, defaultType = 'VARIABL
                                 onChange={handleChange}
                                 className={styles.select}
                             >
-                                <option value="Efectivo">Efectivo</option>
-                                <option value="Transferencia">Transferencia</option>
-                                <option value="Tarjeta">Tarjeta</option>
-                                <option value="Yape/Plin">Yape/Plin</option>
+                                <option value="VISA">VISA</option>
+                                <option value="BCP">BCP</option>
+                                <option value="BBVA">BBVA</option>
+                                <option value="INTERBANK">INTERBANK</option>
+                                <option value="EFECTIVO">EFECTIVO</option>
                             </select>
                         </div>
                     </div>

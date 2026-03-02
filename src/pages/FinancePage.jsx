@@ -18,31 +18,39 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 
 // --- COMPONENTS ---
 
-const KpiCard = ({ title, value, subtext, icon, trend, trendValue, colorClass }) => (
-    <div className={styles.kpiCard}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-                <span className={styles.kpiLabel}>{title}</span>
-                <div className={styles.kpiValue}>{value}</div>
+const KpiCard = ({ title, value, subtext, icon, trend, trendValue, colorClass, onClick }) => {
+    const cardStyle = onClick ? { cursor: 'pointer', transition: 'transform 0.1s', ':active': { transform: 'scale(0.98)' } } : {};
+    return (
+        <div
+            className={styles.kpiCard}
+            style={cardStyle}
+            onClick={onClick}
+            title={onClick ? "Clic para ver detalle mensual" : ""}
+        >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                    <span className={styles.kpiLabel}>{title}</span>
+                    <div className={styles.kpiValue}>{value}</div>
+                </div>
+                <div className={`${styles.kpiIcon} ${styles[colorClass]}`}>
+                    {icon}
+                </div>
             </div>
-            <div className={`${styles.kpiIcon} ${styles[colorClass]}`}>
-                {icon}
-            </div>
+            {subtext && (
+                <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {trend === 'up' && <ArrowUpRight size={16} className={styles.textGreen} />}
+                    {trend === 'down' && <ArrowDownRight size={16} className={styles.textRed} />}
+                    <span className={trend === 'up' ? styles.textGreen : (trend === 'down' ? styles.textRed : '')}>
+                        {trendValue}
+                    </span>
+                    <span style={{ opacity: 0.8 }}>{subtext}</span>
+                </div>
+            )}
         </div>
-        {subtext && (
-            <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                {trend === 'up' && <ArrowUpRight size={16} className={styles.textGreen} />}
-                {trend === 'down' && <ArrowDownRight size={16} className={styles.textRed} />}
-                <span className={trend === 'up' ? styles.textGreen : (trend === 'down' ? styles.textRed : '')}>
-                    {trendValue}
-                </span>
-                <span style={{ opacity: 0.8 }}>{subtext}</span>
-            </div>
-        )}
-    </div>
-);
+    );
+};
 
-const TodayCard = ({ title, value, type }) => {
+const TodayCard = ({ title, value, type, onClick }) => {
     let icon, trendClass;
     if (type === 'income') {
         icon = <ArrowUpRight size={18} />;
@@ -55,8 +63,15 @@ const TodayCard = ({ title, value, type }) => {
         trendClass = styles.trendNeutral;
     }
 
+    const cardStyle = onClick ? { cursor: 'pointer', transition: 'transform 0.1s', ':active': { transform: 'scale(0.98)' } } : {};
+
     return (
-        <div className={styles.todayCard}>
+        <div
+            className={styles.todayCard}
+            style={cardStyle}
+            onClick={onClick}
+            title={onClick ? "Clic para ver el detalle de ingresos" : ""}
+        >
             <div className={styles.todayHeader}>
                 {title}
                 <div className={`${styles.todayTrend} ${trendClass}`}>
@@ -213,7 +228,7 @@ const FinancePage = () => {
                             <span>Detalle del día:</span>
                             <input
                                 type="date"
-                                value={selectedDay.toISOString().split('T')[0]}
+                                value={new Date(selectedDay.getTime() - (selectedDay.getTimezoneOffset() * 60000)).toISOString().split('T')[0]}
                                 onChange={handleDayChange}
                                 className={styles.inlineDatePicker}
                             />
@@ -222,11 +237,13 @@ const FinancePage = () => {
                             title={todayMetrics.isToday ? "Ingreso Hoy" : "Ingreso del Día"}
                             value={formatCurrency(todayMetrics.income)}
                             type="income"
+                            onClick={() => navigate(`/finanzas/ingresos-diarios?date=${new Date(selectedDay.getTime() - (selectedDay.getTimezoneOffset() * 60000)).toISOString().split('T')[0]}`)}
                         />
                         <TodayCard
                             title={todayMetrics.isToday ? "Gasto Hoy" : "Gasto del Día"}
                             value={formatCurrency(todayMetrics.expenses)}
                             type="expense"
+                            onClick={() => navigate('/gastos')}
                         />
                         <TodayCard
                             title={todayMetrics.isToday ? "Balance Diario" : "Balance del Día"}
@@ -253,6 +270,7 @@ const FinancePage = () => {
                         subtext={todayMetrics.isToday ? "acumulado hoy" : `total en ${selectedDay.toLocaleDateString('es-ES')}`}
                         trend="up"
                         trendValue="Cobrado"
+                        onClick={() => navigate(`/finanzas/ingresos-mensuales?month=${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}`)}
                     />
                     <KpiCard
                         title="Gastos Operativos"

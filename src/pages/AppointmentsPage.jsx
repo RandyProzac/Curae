@@ -895,35 +895,104 @@ const AppointmentsPage = () => {
     };
 
 
-    // --- TEST DATA GENERATOR (Specific for Feb 14th Cascade Test) ---
+    // --- TEST DATA GENERATOR ---
     const generateTestData = () => {
-        showAlert('¿Generar 4 citas de prueba simultáneas el Sábado 14 de Febrero a las 14:00?', 'Confirmar Prueba Cascada', 'confirm', async () => {
+        showAlert(`¿Generar 2 pacientes dummy por Doctor con citas aleatorias en Marzo 2026?`, 'Confirmar Generación Masiva', 'confirm', async () => {
             setLoading(true);
             try {
-                const availableDoctors = doctorsData.length > 0 ? doctorsData : fallbackDoctors;
-                const doctorsForTest = Array.from({ length: 4 }, (_, i) => availableDoctors[i % availableDoctors.length]);
+                // Fetch all active doctors
+                const { data: realDocs, error: docErr } = await supabase.from('doctors').select('id, name').eq('active', true);
+                if (docErr) throw docErr;
+                if (!realDocs || realDocs.length === 0) throw new Error('No se encontraron doctores reales activos.');
 
-                const availablePatients = patientsData.length > 0 ? patientsData : [{ id: 1 }];
-                const patientsForTest = Array.from({ length: 4 }, (_, i) => availablePatients[i % availablePatients.length]);
+                const newPatients = [];
+                const testAppointments = [];
+                const statusOptions = ['pending', 'confirmed', 'attended']; // 'cancelled' omitted for visuals
 
-                const statusOptions = ['pending', 'confirmed', 'attended', 'cancelled'];
+                // Prepare patients
+                realDocs.forEach(doc => {
+                    for (let i = 1; i <= 2; i++) {
+                        newPatients.push({
+                            first_name: `Paciente de Prueba ${i}`,
+                            last_name: `[${doc.name.split(' ')[0]}]`,
+                            phone: '999999999',
+                            email: `test${Date.now()}${i}@curae.com`,
+                            doctor_id: doc.id
+                        });
+                    }
+                });
 
-                const testAppointments = doctorsForTest.map((doc, i) => ({
-                    doctor_id: doc.id,
-                    patient_id: patientsForTest[i].id,
-                    date: '2026-02-14',
-                    start_time: '14:00',
-                    end_time: '15:00',
-                    motivo: `Prueba Cascada ${i + 1}`,
-                    notes: 'Generado para probar layout en cascada',
-                    status: statusOptions[i % statusOptions.length],
-                    service_id: null
-                }));
+                // Insert patients
+                const { data: insertedPatients, error: patInsErr } = await supabase
+                    .from('patients')
+                    .insert(newPatients)
+                    .select('id, doctor_id');
 
-                const { error } = await supabase.from('appointments').insert(testAppointments);
-                if (error) throw error;
+                if (patInsErr) throw patInsErr;
 
-                showAlert('4 citas generadas exitosamente. Recargando...', 'Datos Creados', 'alert');
+                // Prepare appointments, plans, budgets, and items for the inserted patients
+                for (let idx = 0; idx < insertedPatients.length; idx++) {
+                    const patient = insertedPatients[idx];
+
+                    // 1. Create Budget
+                    const { data: budget, error: budgetErr } = await supabase.from('budgets').insert([{
+                        patient_id: patient.id,
+                        title: 'Presupuesto Principal',
+                        status: 'pending',
+                        is_treatment_plan: true
+                    }]).select('id').single();
+                    if (budgetErr) throw budgetErr;
+
+                    // 2. Create Treatment Plan
+                    const { data: plan, error: planErr } = await supabase.from('treatment_plans').insert([{
+                        patient_id: patient.id,
+                        title: 'Plan Integral Generado',
+                        status: 'active',
+                        notes: 'Plan generado automáticamente para prueba',
+                        budget_id: budget.id
+                    }]).select('id').single();
+                    if (planErr) throw planErr;
+
+                    // 3. Create Budget Items (2 to 4 items)
+                    const numItems = Math.floor(Math.random() * 3) + 2;
+                    const testItems = Array.from({ length: numItems }).map((_, i) => ({
+                        budget_id: budget.id,
+                        doctor_id: patient.doctor_id,
+                        service_name: `Tratamiento Aleatorio ${i + 1}`,
+                        tooth_number: [11, 12, 13, 21, 24, 36, 46][Math.floor(Math.random() * 7)].toString(),
+                        unit_price: Math.floor(Math.random() * 401) + 100, // 100 to 500
+                        quantity: 1,
+                        discount: 0,
+                        discount_type: 'amount',
+                        paid_amount: 0
+                    }));
+                    const { error: itemErr } = await supabase.from('budget_items').insert(testItems);
+                    if (itemErr) throw itemErr;
+
+                    // 4. Prepare Appointment Object
+                    const randomDay = Math.floor(Math.random() * 31) + 1;
+                    const dateStr = `2026-03-${String(randomDay).padStart(2, '0')}`;
+                    const randomHour = Math.floor(Math.random() * 9) + 9;
+                    const startTime = `${String(randomHour).padStart(2, '0')}:00`;
+                    const endTime = `${String(randomHour + 1).padStart(2, '0')}:00`;
+
+                    testAppointments.push({
+                        doctor_id: patient.doctor_id,
+                        patient_id: patient.id,
+                        date: dateStr,
+                        start_time: startTime,
+                        end_time: endTime,
+                        motivo: `Cita de Prueba Marzo`,
+                        notes: 'Asociada a plan estructurado',
+                        status: statusOptions[idx % statusOptions.length]
+                    });
+                }
+
+                // Insert appointments
+                const { error: apptErr } = await supabase.from('appointments').insert(testAppointments);
+                if (apptErr) throw apptErr;
+
+                showAlert('Pacientes y citas generadas exitosamente. Recargando...', 'Datos Creados', 'alert');
                 setTimeout(() => window.location.reload(), 1500);
             } catch (err) {
                 console.error(err);
@@ -935,15 +1004,38 @@ const AppointmentsPage = () => {
     };
 
     const clearTestData = () => {
-        showAlert('¿BORRAR todas las citas con motivo "Cita de Prueba..."?', 'Confirmar Borrado', 'confirm', async () => {
+        showAlert('¿BORRAR todos los pacientes de prueba creados y sus citas?', 'Confirmar Borrado', 'confirm', async () => {
             setLoading(true);
             try {
-                const { error } = await supabase
+                // Delete appointments first
+                const { error: apptErr } = await supabase
                     .from('appointments')
                     .delete()
                     .ilike('motivo', 'Cita de Prueba%');
 
-                if (error) throw error;
+                if (apptErr) throw apptErr;
+
+                // Determine test patients to clean up dependencies first
+                const { data: patsToDelete } = await supabase
+                    .from('patients')
+                    .select('id')
+                    .ilike('first_name', 'Paciente de Prueba%');
+
+                if (patsToDelete && patsToDelete.length > 0) {
+                    const patIds = patsToDelete.map(p => p.id);
+
+                    // Explicitly delete treatment_plans to smoothly pass dependency chains (Budgets and Items follow CASCADE)
+                    await supabase.from('treatment_plans').delete().in('patient_id', patIds);
+
+                    // Delete dummy patients
+                    const { error: patErr } = await supabase
+                        .from('patients')
+                        .delete()
+                        .in('id', patIds);
+
+                    if (patErr) throw patErr;
+                }
+
                 showAlert('Datos de prueba eliminados. Recargando...', 'Datos Eliminados', 'alert');
                 setTimeout(() => window.location.reload(), 1500);
             } catch (err) {

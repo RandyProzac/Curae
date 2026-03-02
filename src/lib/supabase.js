@@ -677,6 +677,153 @@ export const financeApi = {
     },
 
     /**
+     * Get detailed list of all daily payments for manual reconciliation
+     */
+    async getDailyIncomeDetails(startDate, endDate) {
+        let query = supabase
+            .from('payments')
+            .select(`
+                id,
+                amount,
+                method,
+                created_at,
+                budget_item:budget_items (
+                    service_name,
+                    doctor_id,
+                    budget:budgets (
+                        title,
+                        patient:patients (
+                            first_name,
+                            last_name,
+                            doctor_id,
+                            doctor:doctors (name)
+                        )
+                    ),
+                    item_doctor:doctors!budget_items_doctor_id_fkey (name)
+                )
+            `);
+
+        if (startDate) query = query.gte('created_at', startDate);
+        if (endDate) query = query.lte('created_at', endDate);
+
+        const { data: payments, error } = await query.order('created_at', { ascending: false });
+
+        if (error) {
+            console.warn('Error fetching daily income details:', error);
+            return [];
+        }
+
+        return payments.map(payment => {
+            const bi = payment.budget_item;
+            const patient = bi?.budget?.patient;
+
+            // Determine doctor attribution priority:
+            // 1. Doctor assigned to item
+            // 2. Doctor assigned to patient
+            let doctorName = 'Sin Asignar';
+            if (bi?.item_doctor?.name) {
+                doctorName = bi.item_doctor.name;
+            } else if (patient?.doctor?.name) {
+                doctorName = patient.doctor.name;
+            }
+
+            return {
+                id: payment.id,
+                date: payment.created_at,
+                patientName: patient ? `${patient.first_name} ${patient.last_name}` : 'Paciente Eliminado',
+                planName: bi?.budget?.title || 'Plan General',
+                treatment: bi?.service_name || 'Servicio Desconocido',
+                attendingDoctor: doctorName,
+                amount: parseFloat(payment.amount) || 0,
+                method: payment.method || 'No definido'
+            };
+        });
+    },
+
+    /**
+     * Get monthly income summarized per patient
+     */
+    async getMonthlyIncomeDetails(startDate, endDate) {
+        let query = supabase
+            .from('payments')
+            .select(`
+                id,
+                amount,
+                created_at,
+                budget_item:budget_items (
+                    budget:budgets (
+                        patient:patients (
+                            id,
+                            first_name,
+                            last_name
+                        )
+                    )
+                )
+            `);
+
+        if (startDate) query = query.gte('created_at', startDate);
+        if (endDate) query = query.lte('created_at', endDate);
+
+        const { data: payments, error } = await query;
+
+        if (error) {
+            console.warn('Error fetching monthly income details:', error);
+            return [];
+        }
+
+        // Aggregate by patient and by day
+        const patientTotalsMap = new Map();
+        const dayTotalsMap = new Map();
+
+        payments.forEach(payment => {
+            const amount = parseFloat(payment.amount) || 0;
+            const dateObj = new Date(payment.created_at);
+            // Format as YYYY-MM-DD local logic (assuming stored in UTC but we display based on local, 
+            // but let's just grab the naive date part logic from standard ISO)
+            const dayKey = payment.created_at.split('T')[0];
+
+            // 1. Group by Day
+            if (dayTotalsMap.has(dayKey)) {
+                dayTotalsMap.get(dayKey).total += amount;
+            } else {
+                dayTotalsMap.set(dayKey, {
+                    day: dayKey,
+                    total: amount,
+                    // Parse visual date format later if needed
+                });
+            }
+
+            // 2. Group by Patient
+            const patient = payment.budget_item?.budget?.patient;
+            if (patient) {
+                const patientName = `${patient.first_name} ${patient.last_name}`;
+                if (patientTotalsMap.has(patient.id)) {
+                    patientTotalsMap.get(patient.id).total += amount;
+                } else {
+                    patientTotalsMap.set(patient.id, {
+                        patientId: patient.id,
+                        patientName,
+                        total: amount,
+                        lastPaymentDate: payment.created_at
+                    });
+                }
+            }
+        });
+
+        const summarizedByPatient = Array.from(patientTotalsMap.values());
+        summarizedByPatient.sort((a, b) => a.patientName.localeCompare(b.patientName));
+
+        const summarizedByDay = Array.from(dayTotalsMap.values());
+        // Sort ascending by date
+        summarizedByDay.sort((a, b) => a.day.localeCompare(b.day));
+
+        return {
+            byPatient: summarizedByPatient,
+            byDay: summarizedByDay
+        };
+    },
+
+    /**
      * Get revenue grouped by doctor (Accurate attribution via budget_items and patients)
      */
     async getRevenueByDoctor(startDate = null, endDate = null) {
@@ -1870,6 +2017,83 @@ export const treatmentPlanApi = {
 
     // Evolution Specific Methods
 
+};
+
+// ============================================
+// LABORATORY WORKS 
+// ============================================
+export const labWorkApi = {
+    async getByPatient(patientId) {
+        const { data, error } = await supabase
+            .from('laboratory_works')
+            .select(`
+                *,
+                doctor:doctors(name)
+            `)
+            .eq('patient_id', patientId)
+            .order('created_at', { ascending: false });
+        if (error) {
+            console.warn(`Error fetching lab works for patient ${patientId}:`, error);
+            return [];
+        }
+        return data || [];
+    },
+    async create(work) {
+        const { data, error } = await supabase.from('laboratory_works').insert(work).select().single();
+        if (error) throw error;
+        return data;
+    },
+    async update(id, updates) {
+        const { data, error } = await supabase
+            .from('laboratory_works')
+            .update({ ...updates, updated_at: new Date().toISOString() })
+            .eq('id', id)
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    },
+    async delete(id) {
+        const { error } = await supabase.from('laboratory_works').delete().eq('id', id);
+        if (error) throw error;
+    }
+};
+
+// ============================================
+// PATIENT CONSENTS 
+// ============================================
+export const patientConsentsApi = {
+    async getByPatient(patientId) {
+        const { data, error } = await supabase
+            .from('patient_consents')
+            .select('*')
+            .eq('patient_id', patientId)
+            .order('created_at', { ascending: false });
+        if (error) {
+            console.warn(`Error fetching consents for patient ${patientId}:`, error);
+            return [];
+        }
+        return data || [];
+    },
+    async create(consent) {
+        const { data, error } = await supabase.from('patient_consents').insert(consent).select().single();
+        if (error) throw error;
+        return data;
+    },
+    async update(id, updates) {
+        const { data, error } = await supabase
+            .from('patient_consents')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    },
+    async delete(id) {
+        const { error } = await supabase.from('patient_consents').delete().eq('id', id);
+        if (error) throw error;
+    }
 };
 
 export default supabase;

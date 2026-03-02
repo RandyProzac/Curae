@@ -15,6 +15,8 @@ import InventoryPage from './pages/InventoryPage';
 import ExpensesPage from './pages/ExpensesPage';
 import TreatmentEvolutionPage from './pages/TreatmentEvolutionPage';
 import IntegrationsPage from './pages/IntegrationsPage';
+import DailyIncomePage from './pages/DailyIncomePage';
+import MonthlyIncomePage from './pages/MonthlyIncomePage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
@@ -67,6 +69,8 @@ const AppRouter = () => {
                 {/* Placeholders */}
                 <Route path="agenda" element={<div>Módulo Agenda (Próximamente)</div>} />
                 <Route path="finanzas" element={<FinancePage />} />
+                <Route path="finanzas/ingresos-diarios" element={<DailyIncomePage />} />
+                <Route path="finanzas/ingresos-mensuales" element={<MonthlyIncomePage />} />
                 <Route path="gastos" element={<ExpensesPage />} />
                 <Route path="doctores" element={<DoctorsPage />} />
                 <Route path="configuracion" element={<div>Módulo Configuración (Próximamente)</div>} />

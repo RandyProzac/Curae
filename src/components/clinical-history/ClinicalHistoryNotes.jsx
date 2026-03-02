@@ -55,7 +55,7 @@ export default function ClinicalHistoryNotes({ patientId }) {
     const formatDate = (isoString) => {
         if (!isoString) return '';
         const d = new Date(isoString);
-        return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
     };
 
     return (

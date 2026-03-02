@@ -32,7 +32,7 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
     });
     const [paymentModal, setPaymentModal] = useState({ open: false, item: null });
     const [paymentAmount, setPaymentAmount] = useState('');
-    const [paymentMethod, setPaymentMethod] = useState('efectivo');
+    const [paymentMethod, setPaymentMethod] = useState('VISA');
     const [paymentNotes, setPaymentNotes] = useState('');
     const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null });
     const [isPaying, setIsPaying] = useState(false);
@@ -235,7 +235,7 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
             setBudgets(finalBudgets);
             setPaymentModal({ open: false, item: null });
             setPaymentAmount('');
-            setPaymentMethod('efectivo');
+            setPaymentMethod('VISA');
             setPaymentNotes('');
         } catch (err) {
             console.error('Error registering payment:', err);
@@ -529,10 +529,11 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
                             <div style={S.fieldGroup}>
                                 <label style={S.fieldLabel}>Método de Pago</label>
                                 <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} style={S.fieldInput}>
-                                    <option value="efectivo">Efectivo</option>
-                                    <option value="tarjeta">Tarjeta</option>
-                                    <option value="transferencia">Transferencia</option>
-                                    <option value="yape">Yape / Plin</option>
+                                    <option value="VISA">VISA</option>
+                                    <option value="BCP">BCP</option>
+                                    <option value="BBVA">BBVA</option>
+                                    <option value="INTERBANK">INTERBANK</option>
+                                    <option value="EFECTIVO">EFECTIVO</option>
                                 </select>
                             </div>
                             <div style={S.fieldGroup}>

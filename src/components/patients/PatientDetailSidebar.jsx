@@ -37,7 +37,7 @@ const PatientDetailSidebar = ({ patient, isOpen, onClose }) => {
     // Payment modal
     const [paymentModal, setPaymentModal] = useState({ open: false, item: null });
     const [paymentAmount, setPaymentAmount] = useState('');
-    const [paymentMethod, setPaymentMethod] = useState('efectivo');
+    const [paymentMethod, setPaymentMethod] = useState('VISA');
     const [paymentNotes, setPaymentNotes] = useState('');
 
     // Confirmation Modal
@@ -237,7 +237,7 @@ const PatientDetailSidebar = ({ patient, isOpen, onClose }) => {
             setBudgets(finalBudgets);
             setPaymentModal({ open: false, item: null });
             setPaymentAmount('');
-            setPaymentMethod('efectivo');
+            setPaymentMethod('VISA');
             setPaymentNotes('');
         } catch (err) {
             console.error('Error registering payment:', err);
@@ -432,8 +432,8 @@ const PatientDetailSidebar = ({ patient, isOpen, onClose }) => {
                         /* ===== PLANES DE TRATAMIENTO TAB ===== */
                         <TreatmentPlans
                             patientId={patient.id}
-                            patientName={`${patient.first_name} ${patient.last_name}`.trim()}
-                            patientPhone={patient.phone}
+                            patientName={patient.name || (patientDetail ? `${patientDetail.first_name} ${patientDetail.last_name}`.trim() : '')}
+                            patientPhone={patientDetail?.phone || patient?.phone || ''}
                             onUpdate={loadPatientData}
                         />
                     )}
@@ -462,10 +462,11 @@ const PatientDetailSidebar = ({ patient, isOpen, onClose }) => {
                                 <div className={styles.paymentField}>
                                     <label>Método de Pago</label>
                                     <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
-                                        <option value="efectivo">Efectivo</option>
-                                        <option value="tarjeta">Tarjeta</option>
-                                        <option value="transferencia">Transferencia</option>
-                                        <option value="yape">Yape / Plin</option>
+                                        <option value="VISA">VISA</option>
+                                        <option value="BCP">BCP</option>
+                                        <option value="BBVA">BBVA</option>
+                                        <option value="INTERBANK">INTERBANK</option>
+                                        <option value="EFECTIVO">EFECTIVO</option>
                                     </select>
                                 </div>
                                 <div className={styles.paymentField}>

@@ -28,9 +28,10 @@ const ExpensesPage = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    const today = new Date();
     const [dateRange, setDateRange] = useState({
-        start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-        end: new Date().toISOString().split('T')[0]
+        start: new Date(today.getFullYear(), today.getMonth(), 1, 12, 0, 0).toISOString().split('T')[0],
+        end: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0).toISOString().split('T')[0]
     });
 
     const loadData = useCallback(async () => {

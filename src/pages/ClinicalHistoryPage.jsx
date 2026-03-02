@@ -17,6 +17,8 @@ import ClinicalHistoryOdontogram from '../components/clinical-history/ClinicalHi
 import ClinicalHistoryGallery from '../components/clinical-history/ClinicalHistoryGallery'
 import ClinicalHistoryBudget from '../components/clinical-history/ClinicalHistoryBudget'
 import TreatmentPlans from '../components/clinical-history/TreatmentPlans'
+import ClinicalHistoryLabWork from '../components/clinical-history/ClinicalHistoryLabWork'
+import ClinicalHistoryConsents from '../components/clinical-history/ClinicalHistoryConsents'
 
 import styles from '../components/clinical-history/ClinicalHistory.module.css'
 
@@ -305,6 +307,20 @@ export default function ClinicalHistoryPage() {
                     <span>Planes de Tratamiento</span>
                 </div>
                 <div
+                    className={`${styles.tab} ${activeTab === 'LABORATORIO' ? styles.active : ''}`}
+                    onClick={() => setActiveTab('LABORATORIO')}
+                >
+                    <Info size={16} />
+                    <span>Laboratorio</span>
+                </div>
+                <div
+                    className={`${styles.tab} ${activeTab === 'CONSENTIMIENTOS' ? styles.active : ''}`}
+                    onClick={() => setActiveTab('CONSENTIMIENTOS')}
+                >
+                    <ClipboardList size={16} />
+                    <span>Consentimientos</span>
+                </div>
+                <div
                     className={`${styles.tab} ${activeTab === 'IMAGENES' ? styles.active : ''}`}
                     onClick={() => setActiveTab('IMAGENES')}
                 >
@@ -348,6 +364,21 @@ export default function ClinicalHistoryPage() {
                             patientId={patientId}
                             patientName={`${formData.nombres} ${formData.apellidos}`.trim()}
                             patientPhone={formData.telefono}
+                        />
+                    </div>
+                )}
+
+                {activeTab === 'LABORATORIO' && (
+                    <div className={styles.content}>
+                        <ClinicalHistoryLabWork patientId={patientId} />
+                    </div>
+                )}
+
+                {activeTab === 'CONSENTIMIENTOS' && (
+                    <div className={styles.content}>
+                        <ClinicalHistoryConsents
+                            patientId={patientId}
+                            patientName={`${formData.nombres} ${formData.apellidos}`.trim()}
                         />
                     </div>
                 )}

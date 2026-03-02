@@ -1,0 +1,254 @@
+.container {
+    padding: 30px;
+    background-color: #f8fafc;
+    min-height: 100vh;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 30px;
+}
+
+.titleSection {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.backBtn {
+    background: white;
+    border: 1px solid #e2e8f0;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #64748b;
+    transition: all 0.2s;
+}
+
+.backBtn:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+.titleSection h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 5px 0;
+}
+
+.titleSection p {
+    color: #64748b;
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.viewToggleGroup {
+    display: flex;
+    background: #f1f5f9;
+    padding: 4px;
+    border-radius: 8px;
+    gap: 4px;
+}
+
+.viewToggleBtn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: none;
+    background: transparent;
+    color: #64748b;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.viewToggleBtn:hover {
+    color: #0f172a;
+}
+
+.viewToggleActive {
+    background: white;
+    color: #0f766e;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.dateSelector {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.calendarIcon {
+    position: absolute;
+    left: 12px;
+    color: #64748b;
+    pointer-events: none;
+}
+
+.dateInput {
+    padding: 10px 15px 10px 38px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #1e293b;
+    outline: none;
+    cursor: pointer;
+    background-color: white;
+    font-weight: 500;
+}
+
+.dateInput:focus {
+    border-color: #0f766e;
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+}
+
+.searchBox {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.searchIcon {
+    position: absolute;
+    left: 12px;
+    color: #64748b;
+    pointer-events: none;
+}
+
+.searchInput {
+    padding: 10px 15px 10px 38px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #1e293b;
+    outline: none;
+    width: 250px;
+}
+
+.searchInput:focus {
+    border-color: #0f766e;
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+}
+
+.totalBox {
+    background: #1e293b;
+    color: white;
+    padding: 12px 25px;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.totalLabel {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    opacity: 0.8;
+    margin-bottom: 2px;
+}
+
+.totalAmount {
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+.tableCard {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+}
+
+.tableWrapper {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th {
+    background-color: #f8fafc;
+    padding: 15px 20px;
+    text-align: left;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: #64748b;
+    border-bottom: 1px solid #e2e8f0;
+    letter-spacing: 0.05em;
+}
+
+.table td {
+    padding: 16px 20px;
+    font-size: 0.95rem;
+    color: #1e293b;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.table tbody tr {
+    transition: background-color 0.2s;
+}
+
+.table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+.footerRow td {
+    background-color: #f8fafc;
+    border-top: 2px solid #e2e8f0;
+    border-bottom: none;
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+.textRight {
+    text-align: right !important;
+}
+
+.boldCell {
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.amountCell {
+    font-weight: 700;
+    color: #059669;
+    font-variant-numeric: tabular-nums;
+}
+
+.loading {
+    text-align: center;
+    padding: 80px 20px;
+    color: #64748b;
+    font-size: 1.1rem;
+}
+
+.emptyState {
+    text-align: center;
+    padding: 80px 20px;
+    color: #94a3b8;
+    font-size: 1.1rem;
+    background: #fbfbfc;
+}
