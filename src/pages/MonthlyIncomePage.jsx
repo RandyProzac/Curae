@@ -23,7 +23,6 @@ export default function MonthlyIncomePage() {
     const [patientTotals, setPatientTotals] = useState([]);
     const [dayTotals, setDayTotals] = useState([]);
     const [filterQuery, setFilterQuery] = useState('');
-    const [totalIncome, setTotalIncome] = useState(0);
 
     const loadData = async (dateObj) => {
         setLoading(true);
@@ -40,10 +39,6 @@ export default function MonthlyIncomePage() {
 
             setPatientTotals(summarizedData.byPatient || []);
             setDayTotals(summarizedData.byDay || []);
-
-            // Calculate absolute total of the entire month (either array works)
-            const monthTotal = (summarizedData.byPatient || []).reduce((acc, pt) => acc + (pt.total || 0), 0);
-            setTotalIncome(monthTotal);
         } catch (error) {
             console.error('Error fetching monthly income details:', error);
         } finally {

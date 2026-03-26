@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual de Usuario - Curae Online</title>
+    <style>
+        :root {
+            --primary-bg: #f8fafc;
+            --container-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --border-color: #e2e8f0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--primary-bg);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .presentation-container {
+            width: 100%;
+            max-width: 1200px;
+            height: 90vh;
+            background: var(--container-bg);
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* HEADER */
+        header {
+            padding: 20px 30px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--container-bg);
+            z-index: 10;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand svg {
+            color: var(--accent);
+        }
+
+        .brand h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+        
+        .progress-indicator {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        /* SLIDER CONTENT */
+        .slider-wrapper {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            opacity: 0;
+            transform: translateX(50px);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            padding: 30px;
+            gap: 40px;
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: auto;
+        }
+
+        .slide.prev {
+            transform: translateX(-50px);
+        }
+
+        .slide-text {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            max-width: 450px;
+        }
+
+        .slide-text h2 {
+            font-size: 2.5rem;
+            color: var(--accent);
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+
+        .slide-text p {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .slide-text ul {
+            list-style: none;
+        }
+
+        .slide-text ul li {
+            position: relative;
+            padding-left: 24px;
+            margin-bottom: 12px;
+            font-size: 1.05rem;
+            color: var(--text-main);
+        }
+
+        .slide-text ul li::before {
+            content: "✓";
+            color: var(--accent);
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
+
+        .slide-image {
+            flex: 1.5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--primary-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            padding: 10px;
+        }
+
+        .slide-image img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        /* CONTROLS */
+        .controls {
+            padding: 20px 30px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--container-bg);
+        }
+
+        .nav-dots {
+            display: flex;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #cbd5e1;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-outline:hover {
+            background: var(--primary-bg);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .slide {
+                flex-direction: column;
+                overflow-y: auto;
+            }
+            .slide-text {
+                max-width: 100%;
+                justify-content: flex-start;
+            }
+            .slide-text h2 {
+                font-size: 2rem;
+            }
+            .slide-image {
+                min-height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="presentation-container">
+        <!-- Encabezado -->
+        <header>
+            <div class="brand">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+                <h1>Curae Online - Manual</h1>
+            </div>
+            <div class="progress-indicator" id="progress-text">1 de 9</div>
+        </header>
+
+        <!-- Contenido de las Slide -->
+        <div class="slider-wrapper" id="slider">
+            
+            <!-- Slide 1 -->
+            <div class="slide active">
+                <div class="slide-text">
+                    <h2>Bienvenido a Curae Online</h2>
+                    <p>Accede fácil y rápido a tu plataforma de gestión dental.</p>
+                    <ul>
+                        <li>Ingresa a la dirección web desde cualquier navegador.</li>
+                        <li>Escribe tu usuario/correo y contraseña.</li>
+                        <li>Haz clic en <strong>Acceder al Portal</strong>.</li>
+                    </ul>
+                </div>
+                <div class="slide-image">
+                    <img src="assets/1.png" alt="Pantalla de Login">
+                </div>
+            </div>
+
+            <!-- Slide 2 -->
+            <div class="slide">
+                <div class="slide-text">
+                    <h2>Panel Principal (Dashboard)</h2>
+                    <p>El centro de control de tu clínica.</p>
+                    <ul>
+                        <li><strong>Métricas rápidas:</strong> Revisa citas del día, nuevos pacientes e ingresos mensuales de un vistazo.</li>
+                        <li><strong>Menú de Navegación:</strong> A la izquierda encontrarás todos los módulos del sistema (Citas, Pacientes, Finanzas, etc).</li>
+                    </ul>
+                </div>
+                <div class="slide-image">
+                    <img src="assets/2.png" alt="Dashboard">
+                </div>
+            </div>
+
+            <!-- Slide 3 -->
+            <div class="slide">
+                <div class="slide-text">
+                    <h2>Agenda de Citas</h2>
+                    <p>Un calendario interactivo para no perder ninguna consulta.</p>
+                    <ul>
+                        <li>Visualiza turnos por mes, semana o día.</li>
+                        <li>Selecciona un recuadro para agendar rápidamente a un paciente.</li>
+                        <li>Filtra las citas por doctor o especialidad.</li>
+                    </ul>
+                </div>
+                <div class="slide-image">
+                    <img src="assets/3.png" alt="Calendario de Citas">
+                </div>
+            </div>
+
+            <!-- Slide 4 -->
+            <div class="slide">
+                <div class="slide-text">
+                    <h2>Directorio de Pacientes</h2>
+                    <p>Toda la información de tus pacientes en un solo lugar.</p>
+                    <ul>
+                        <li>Busca pacientes por nombre o DNI.</li>
+                        <li>Usa el botón <strong>+ Nuevo Paciente</strong> para registrar a alguien.</li>
+                        <li>Haz clic en un paciente para entrar a su perfil y ver su historial.</li>
+                    </ul>
+                </div>
+                <div class="slide-image">
+                    <img src="assets/4.png" alt="Lista de Pacientes">
+                </div>
+            </div>
+
+            <!-- Slide 5 -->
+            <div class="slide">
+                <div class="slide-text">
+                    <h2>Historia Clínica</h2>
+                    <p>Gestiona los antecedentes y tratamientos.</p>
+                    <ul>
+                        <li>Revisa los datos personales y de contacto.</li>
+                        <li>Visualiza las alertas médicas o alergias (si aplica).</li>
+                        <li>Navega entre las pestañas de Odontograma, Planes de Tratamiento y Pagos.</li>
+                    </ul>
+                </div>
+                <div class="slide-image">
+                    <img src="assets/5.png" alt="Historia Clínica">
+                </div>
+            </div>
+
+            <!-- Slide 6 -->
+            <div class="slide">
+                <div class="slide-text">
+                    <h2>Odontograma Interactivo</h2>
+                    <p>Mapa dental detallado y fácil de usar.</p>
+                    <ul>
+                        <li>Selecciona piezas dentales para marcar su estado inicial.</li>
+                        <li>Añade los procedimientos requeridos a cada diente.</li>
+                        <li>Lleva un gráfico visual del estado de salud bucal del paciente.</li>
+                    </ul>
+                </div>
+                <div class="slide-image">
+                    <img src="assets/6.png" alt="Odontograma">
+                </div>
+            </div>
+
+            <!-- Slide 7 -->
+            <div class="slide">
+                <div class="slide-text">
+                    <h2>Control de Finanzas</h2>
+                    <p>Mantén las cuentas claras.</p>
+                    <ul>
+                        <li>Registra automáticamente los cobros de los pacientes.</li>
+                        <li>Anota los egresos (compras de materiales, pagos).</li>
+                        <li>Genera reportes rápidos para saber cuánto saldo hay en caja.</li>
+                    </ul>
+                </div>
+                <div class="slide-image">
+                    <img src="assets/7.png" alt="Finanzas">
+                </div>
+            </div>
+
+            <!-- Slide 8 -->
+            <div class="slide">
+                <div class="slide-text">
+                    <h2>Gestión de Inventario</h2>
+                    <p>Que nunca falten materiales en el consultorio.</p>
+                    <ul>
+                        <li>Revisa la cantidad disponible de cada producto.</li>
+                        <li>Actualiza el stock tras realizar compras.</li>
+                        <li>Calcula rápidamente el costo de tu inventario.</li>
+                    </ul>
+                </div>
+                <div class="slide-image">
+                    <img src="assets/8.png" alt="Inventario">
+                </div>
+            </div>
+
+            <!-- Slide 9 -->
+            <div class="slide">
+                <div class="slide-text">
+                    <h2>Doctores y Personal</h2>
+                    <p>Administra al equipo de la clínica.</p>
+                    <ul>
+                        <li>Agrega nuevos profesionales y sus especialidades.</li>
+                        <li>Asigna colores para identificarlos rápidamente en la agenda.</li>
+                        <li>Mantén sus datos de contacto actualizados.</li>
+                    </ul>
+                </div>
+                <div class="slide-image">
+                    <img src="assets/9.png" alt="Doctores">
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Controles Inferiores -->
+        <div class="controls">
+            <button class="btn btn-outline" id="btn-prev" disabled>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                Anterior
+            </button>
+            
+            <div class="nav-dots" id="dots-container">
+                <!-- Se generan por JS -->
+            </div>
+
+            <button class="btn btn-primary" id="btn-next">
+                Siguiente
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const slides = document.querySelectorAll('.slide');
+            const btnPrev = document.getElementById('btn-prev');
+            const btnNext = document.getElementById('btn-next');
+            const dotsContainer = document.getElementById('dots-container');
+            const progressText = document.getElementById('progress-text');
+            
+            let currentSlide = 0;
+            const totalSlides = slides.length;
+
+            // Crear puntos de navegación
+            for (let i = 0; i < totalSlides; i++) {
+                const dot = document.createElement('div');
+                dot.classList.add('dot');
+                if (i === 0) dot.classList.add('active');
+                dot.addEventListener('click', () => goToSlide(i));
+                dotsContainer.appendChild(dot);
+            }
+
+            const dots = document.querySelectorAll('.dot');
+
+            function updateUI() {
+                // Actualizar Slides
+                slides.forEach((slide, index) => {
+                    slide.classList.remove('active', 'prev');
+                    if (index === currentSlide) {
+                        slide.classList.add('active');
+                    } else if (index < currentSlide) {
+                        slide.classList.add('prev');
+                    }
+                });
+
+                // Actualizar Dots
+                dots.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === currentSlide);
+                });
+
+                // Actualizar Botones
+                btnPrev.disabled = currentSlide === 0;
+                
+                if (currentSlide === totalSlides - 1) {
+                    btnNext.innerHTML = 'Finalizar <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg>';
+                } else {
+                    btnNext.innerHTML = 'Siguiente <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>';
+                }
+
+                // Actualizar Texto Superior
+                progressText.textContent = `${currentSlide + 1} de ${totalSlides}`;
+            }
+
+            function goToSlide(index) {
+                if (index >= 0 && index < totalSlides) {
+                    currentSlide = index;
+                    updateUI();
+                }
+            }
+
+            btnPrev.addEventListener('click', () => {
+                goToSlide(currentSlide - 1);
+            });
+
+            btnNext.addEventListener('click', () => {
+                if (currentSlide === totalSlides - 1) {
+                    // Confeti o reinicio
+                    goToSlide(0);
+                } else {
+                    goToSlide(currentSlide + 1);
+                }
+            });
+
+            // Navegación con teclado
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowRight') goToSlide(currentSlide + 1);
+                if (e.key === 'ArrowLeft') goToSlide(currentSlide - 1);
+            });
+        });
+    </script>
+</body>
+</html>

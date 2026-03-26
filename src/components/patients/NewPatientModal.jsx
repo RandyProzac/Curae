@@ -17,6 +17,7 @@ const NewPatientModal = ({ isOpen, onClose, onSave }) => {
         conditions: '',
         age: '' // added for quick entry
     });
+    const [loading, setLoading] = useState(false);
 
     React.useEffect(() => {
         const fetchDoctors = async () => {
@@ -60,7 +61,7 @@ const NewPatientModal = ({ isOpen, onClose, onSave }) => {
         }
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         // Helper to convert DD/MM/YYYY to YYYY-MM-DD
         let formattedDate = '';
@@ -80,8 +81,14 @@ const NewPatientModal = ({ isOpen, onClose, onSave }) => {
             doctor_id: formData.doctor_id || null,
             notes: `Edad: ${formData.age}\nAlergias: ${formData.allergies}\nCondiciones: ${formData.conditions}`
         };
-        onSave(patientData);
-        onClose();
+        
+        setLoading(true);
+        try {
+            await onSave(patientData);
+            onClose();
+        } finally {
+            setLoading(false);
+        }
     };
 
     if (!isOpen) return null;
@@ -216,7 +223,7 @@ const NewPatientModal = ({ isOpen, onClose, onSave }) => {
                         <button type="button" onClick={onClose} className={styles.cancelBtn}>
                             Cancelar
                         </button>
-                        <button type="submit" className={styles.submitBtn}>
+                        <button type="submit" className={styles.submitBtn} disabled={loading}>
                             <Save size={18} />
                             Guardar Paciente
                         </button>

@@ -16,20 +16,19 @@ export default function TreatmentEvolutionPage() {
     const [activeTab, setActiveTab] = useState('odontogram'); // 'odontogram' | 'images'
 
     useEffect(() => {
+        const loadData = async () => {
+            try {
+                setLoading(true);
+                const data = await treatmentPlanApi.getById(id);
+                setPlan(data);
+            } catch (error) {
+                console.error('Error loading plan for evolution:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
         loadData();
     }, [id]);
-
-    const loadData = async () => {
-        try {
-            setLoading(true);
-            const data = await treatmentPlanApi.getById(id);
-            setPlan(data);
-        } catch (error) {
-            console.error('Error loading plan for evolution:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleSaveEvolution = async (newEvolutionData) => {
         if (!plan) return;

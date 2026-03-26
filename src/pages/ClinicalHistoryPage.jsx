@@ -10,7 +10,7 @@ import {
     AlertTriangle,
     Info
 } from 'lucide-react'
-import { supabase, odontogramApi, budgetsApi, treatmentPlanApi } from '../lib/supabase'
+import { supabase, odontogramApi } from '../lib/supabase'
 
 import ClinicalHistoryGeneral from '../components/clinical-history/ClinicalHistoryGeneral'
 import ClinicalHistoryOdontogram from '../components/clinical-history/ClinicalHistoryOdontogram'
@@ -138,38 +138,43 @@ export default function ClinicalHistoryPage() {
                     console.warn('Error fetching snapshots, default to empty:', snapError);
                 }
 
-                // Prepare Form Data
-                const newFormData = {
-                    ...formData,
-                    nombres: patient.first_name || '',
-                    apellidos: patient.last_name || '',
-                    dni: patient.dni || '',
-                    telefono: patient.phone || '',
-                    email: patient.email || '',
-                    fechaNacimiento: patient.date_of_birth || '',
-                    direccion: patient.address || '',
-                }
-
                 if (history && !histError) {
                     setHistoryId(history.id)
-                    newFormData.numeroHistoria = history.history_number || history.numero_historia || newFormData.numeroHistoria
-                    // Prioritize history specific fields
-                    newFormData.motivoConsulta = history.notas || history.antecedentes?.motivoConsulta || ''
-                    newFormData.examenRadiografico = history.examen_radiografico || ''
-                    newFormData.diagnostico = history.diagnostico || ''
-
-                    if (history.antecedentes) {
-                        newFormData.antecedentes = { ...newFormData.antecedentes, ...history.antecedentes }
-                        newFormData.ocupacion = history.antecedentes.ocupacion || newFormData.ocupacion
-                        newFormData.lugarTrabajo = history.antecedentes.lugarTrabajo || newFormData.lugarTrabajo
-                        newFormData.estadoCivil = history.antecedentes.estadoCivil || newFormData.estadoCivil
-                        newFormData.nombreApoderado = history.antecedentes.nombreApoderado || newFormData.nombreApoderado
-                    }
-                } else {
-                    newFormData.numeroHistoria = `HC-${new Date().getFullYear()}-${patientId.slice(0, 4).toUpperCase()}`
                 }
 
-                setFormData(newFormData)
+                // Prepare Form Data using functional update
+                setFormData(prev => {
+                    const newFormData = {
+                        ...prev,
+                        nombres: patient.first_name || '',
+                        apellidos: patient.last_name || '',
+                        dni: patient.dni || '',
+                        telefono: patient.phone || '',
+                        email: patient.email || '',
+                        fechaNacimiento: patient.date_of_birth || '',
+                        direccion: patient.address || '',
+                    }
+
+                    if (history && !histError) {
+                        newFormData.numeroHistoria = history.history_number || history.numero_historia || newFormData.numeroHistoria
+                        // Prioritize history specific fields
+                        newFormData.motivoConsulta = history.notas || history.antecedentes?.motivoConsulta || ''
+                        newFormData.examenRadiografico = history.examen_radiografico || ''
+                        newFormData.diagnostico = history.diagnostico || ''
+
+                        if (history.antecedentes) {
+                            newFormData.antecedentes = { ...newFormData.antecedentes, ...history.antecedentes }
+                            newFormData.ocupacion = history.antecedentes.ocupacion || newFormData.ocupacion
+                            newFormData.lugarTrabajo = history.antecedentes.lugarTrabajo || newFormData.lugarTrabajo
+                            newFormData.estadoCivil = history.antecedentes.estadoCivil || newFormData.estadoCivil
+                            newFormData.nombreApoderado = history.antecedentes.nombreApoderado || newFormData.nombreApoderado
+                        }
+                    } else {
+                        newFormData.numeroHistoria = `HC-${new Date().getFullYear()}-${patientId.slice(0, 4).toUpperCase()}`
+                    }
+
+                    return newFormData;
+                })
 
             } catch (error) {
                 console.error('Error loading data:', error)

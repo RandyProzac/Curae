@@ -73,7 +73,7 @@ const AppRouter = () => {
                 <Route path="finanzas/ingresos-mensuales" element={<MonthlyIncomePage />} />
                 <Route path="gastos" element={<ExpensesPage />} />
                 <Route path="doctores" element={<DoctorsPage />} />
-                <Route path="configuracion" element={<div>Módulo Configuración (Próximamente)</div>} />
+
                 <Route path="integraciones" element={<IntegrationsPage />} />
             </Route>
 

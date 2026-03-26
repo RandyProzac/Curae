@@ -57,62 +57,55 @@ const DashboardPage = () => {
         // 3. Fetch Stats
         const fetchStats = async () => {
             try {
-                // Patients Count (Try explicit select 'id' to be lighter)
-                const { count: patCount, error: patError } = await supabase
-                    .from('patients')
-                    .select('id', { count: 'exact', head: true });
-
-                if (patError) console.error('Error counting patients:', patError);
-
-                // Filter by Doctor if user is logged in
+                // Prepare variables upfront
                 const doctorId = user?.id;
-
-                // Appointments Today (Filtered by Doctor)
                 const todayStr = new Date().toISOString().split('T')[0];
-                let aptTodayQuery = supabase
-                    .from('appointments')
-                    .select('id', { count: 'exact', head: true })
-                    .eq('date', todayStr);
-
-                if (doctorId) aptTodayQuery = aptTodayQuery.eq('doctor_id', doctorId);
-                const { count: aptCount } = await aptTodayQuery;
-
-                // Appointments Week (Filtered by Doctor)
+                
                 const d = new Date();
                 const day = d.getDay();
                 const diff = d.getDate() - day + (day === 0 ? -6 : 1);
                 const monday = new Date(d.setDate(diff));
                 monday.setHours(0, 0, 0, 0);
                 const mondayStr = monday.toISOString().split('T')[0];
-
-                let aptWeekQuery = supabase
-                    .from('appointments')
-                    .select('id', { count: 'exact', head: true })
-                    .gte('date', mondayStr);
-
-                if (doctorId) aptWeekQuery = aptWeekQuery.eq('doctor_id', doctorId);
-                const { count: aptWeekCount } = await aptWeekQuery;
-
-                // GLOBAL STATS (KPI Cards) - Keep some global for context or also personal?
-                // The user asked for personal stats in the header.
-
-                // Patients Count
-                const { count: totalPatCount } = await supabase
-                    .from('patients')
-                    .select('id', { count: 'exact', head: true });
-
-                // Active Treatments
-                const { count: totalActiveCount } = await supabase
-                    .from('treatment_plans')
-                    .select('id', { count: 'exact', head: true })
-                    .eq('status', 'active');
-
-                // Income - Month
+                
                 const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-                const incomeMonth = await financeApi.getIncomeByPeriod(startOfMonth);
+                
+                const now = new Date();
+                const currentTodayStr = now.toISOString().split('T')[0];
+                const currentTimeStr = now.toTimeString().split(' ')[0].slice(0, 5); // "HH:MM"
+
+                // Prepare Queries
+                let aptTodayQuery = supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('date', todayStr);
+                if (doctorId) aptTodayQuery = aptTodayQuery.eq('doctor_id', doctorId);
+
+                let aptWeekQuery = supabase.from('appointments').select('id', { count: 'exact', head: true }).gte('date', mondayStr);
+                if (doctorId) aptWeekQuery = aptWeekQuery.eq('doctor_id', doctorId);
+
+                // Execute all queries in parallel
+                const [
+                    { count: patCount, error: patError },
+                    { count: aptCount },
+                    { count: aptWeekCount },
+                    { count: totalActiveCount },
+                    incomeMonth,
+                    productsResult,
+                    { data: upcomingData },
+                    { data: plansData }
+                ] = await Promise.all([
+                    supabase.from('patients').select('id', { count: 'exact', head: true }),
+                    aptTodayQuery,
+                    aptWeekQuery,
+                    supabase.from('treatment_plans').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+                    financeApi.getIncomeByPeriod(startOfMonth).catch(() => 0),
+                    inventoryApi.getProducts().catch(() => []),
+                    supabase.from('appointments').select('*, patient:patients(first_name, last_name), service:services(name)').eq('doctor_id', doctorId || '').gte('date', currentTodayStr).neq('status', 'cancelled').order('date', { ascending: true }).order('start_time', { ascending: true }),
+                    supabase.from('treatment_plans').select('*, patient:patients(first_name, last_name)').order('created_at', { ascending: false }).limit(20)
+                ]);
+
+                if (patError) console.error('Error counting patients:', patError);
 
                 setStats({
-                    patientsCount: totalPatCount || 0,
+                    patientsCount: patCount || 0,
                     appointmentsToday: aptCount || 0,
                     appointmentsWeek: aptWeekCount || 0,
                     activeTreatments: totalActiveCount || 0,
@@ -120,30 +113,10 @@ const DashboardPage = () => {
                 });
 
                 // Low Stock
-                try {
-                    const products = await inventoryApi.getProducts();
-                    const lowStock = Array.isArray(products) ? products.filter(p => p.stock <= p.min_stock) : [];
-                    setLowStockItems(lowStock);
-                } catch (err) {
-                    console.warn('Inventory error:', err);
-                }
-
-                // --- NEW DATASOURCES ---
+                const lowStock = Array.isArray(productsResult) ? productsResult.filter(p => p.stock <= p.min_stock) : [];
+                setLowStockItems(lowStock);
 
                 // Upcoming Appointments
-                const now = new Date();
-                const currentTodayStr = now.toISOString().split('T')[0];
-                const currentTimeStr = now.toTimeString().split(' ')[0].slice(0, 5); // "HH:MM"
-
-                const { data: upcomingData } = await supabase
-                    .from('appointments')
-                    .select('*, patient:patients(first_name, last_name), service:services(name)')
-                    .eq('doctor_id', doctorId || '') // Filter upcoming by current doctor
-                    .gte('date', currentTodayStr)
-                    .neq('status', 'cancelled')
-                    .order('date', { ascending: true })
-                    .order('start_time', { ascending: true });
-
                 let validUpcoming = [];
                 if (upcomingData) {
                     validUpcoming = upcomingData.filter(a => {
@@ -154,12 +127,6 @@ const DashboardPage = () => {
                 setUpcomingAppointments(validUpcoming);
 
                 // Recent High Budget Plans
-                const { data: plansData } = await supabase
-                    .from('treatment_plans')
-                    .select('*, patient:patients(first_name, last_name)')
-                    .order('created_at', { ascending: false })
-                    .limit(20); // Fetch top 20 recent, then sort by budget
-
                 if (plansData) {
                     const topPlans = plansData.map(plan => {
                         const total = (plan.budget?.items || []).reduce((acc, item) => acc + (item.unit_price * item.quantity), 0);

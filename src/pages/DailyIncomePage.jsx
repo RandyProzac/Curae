@@ -21,7 +21,6 @@ export default function DailyIncomePage() {
     const [loading, setLoading] = useState(true);
     const [payments, setPayments] = useState([]);
     const [filterQuery, setFilterQuery] = useState('');
-    const [totalIncome, setTotalIncome] = useState(0);
 
     const loadData = async (dateObj) => {
         setLoading(true);
@@ -33,9 +32,6 @@ export default function DailyIncomePage() {
 
             const fetchedPayments = await financeApi.getDailyIncomeDetails(dayStart.toISOString(), dayEnd.toISOString());
             setPayments(fetchedPayments);
-
-            const total = fetchedPayments.reduce((acc, p) => acc + (p.amount || 0), 0);
-            setTotalIncome(total);
         } catch (error) {
             console.error('Error fetching detailed daily income:', error);
         } finally {

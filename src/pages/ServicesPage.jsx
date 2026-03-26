@@ -31,11 +31,12 @@ const ServicesPage = () => {
     const [editingService, setEditingService] = useState(null);
     const [formData, setFormData] = useState({
         name: '',
-        category: 'Odontología General',
+        category: '',
         description: '',
         price: '',
-        duration_min: 30
+        duration_min: ''
     });
+    const [saving, setSaving] = useState(false);
 
     // Fetch Services
     const fetchServices = async () => {
@@ -120,6 +121,7 @@ const ServicesPage = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setSaving(true);
         try {
             const payload = {
                 name: formData.name,
@@ -140,6 +142,8 @@ const ServicesPage = () => {
         } catch (error) {
             console.error(error);
             alert('Error al guardar servicio: ' + error.message);
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -317,7 +321,7 @@ const ServicesPage = () => {
                             </div>
                             <div className={styles.modalFooter}>
                                 <button type="button" className={styles.cancelBtn} onClick={() => setIsModalOpen(false)}>Cancelar</button>
-                                <button type="submit" className={styles.saveBtn}>Guardar Servicio</button>
+                                <button type="submit" className={styles.saveBtn} disabled={saving}>Guardar Servicio</button>
                             </div>
                         </form>
                     </div>

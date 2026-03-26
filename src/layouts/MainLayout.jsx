@@ -52,7 +52,7 @@ const MainLayout = () => {
         if (pathname.includes('/agenda')) return 'Agenda Médica';
         if (pathname.includes('/odontograma')) return 'Odontograma Clínico';
         if (pathname.includes('/reportes')) return 'Reportes y Métricas';
-        if (pathname.includes('/configuracion')) return 'Configuración';
+
         if (pathname.includes('/integraciones')) return 'Integraciones';
         return 'Curae Online';
     };
@@ -65,7 +65,7 @@ const MainLayout = () => {
         { path: '/doctores', icon: <Users size={20} />, label: 'Doctores' },
         { path: '/finanzas', icon: <Wallet size={20} />, label: 'Finanzas' },
         { path: '/inventario', icon: <ShoppingCart size={20} />, label: 'Inventario' },
-        { path: '/configuracion', icon: <Settings size={20} />, label: 'Configuración' },
+
         { path: '/integraciones', icon: <Plug size={20} />, label: 'Integraciones' },
     ];
 
