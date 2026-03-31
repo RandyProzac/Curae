@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Check, Upload } from 'lucide-react';
+import { X, Save, Check, Upload, Eye, EyeOff, KeyRound } from 'lucide-react';
 import styles from './DoctorModal.module.css';
 
 const PRESET_COLORS = [
@@ -10,7 +10,7 @@ const PRESET_COLORS = [
     '#06b6d4', '#475569'
 ];
 
-const DoctorModal = ({ isOpen, onClose, onSave, doctor = null }) => {
+const DoctorModal = ({ isOpen, onClose, onSave, doctor = null, isAdmin = false }) => {
     const [formData, setFormData] = useState({
         name: '',
         specialty: '',
@@ -22,8 +22,13 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null }) => {
         color: PRESET_COLORS[0],
         active: true
     });
+    const [credentials, setCredentials] = useState({ username: '', password: '' });
+    const [showPassword, setShowPassword] = useState(false);
     const [signatureFile, setSignatureFile] = useState(null);
     const [loading, setLoading] = useState(false);
+
+    const isNewDoctor = !doctor;
+    const showCredentials = isNewDoctor && isAdmin;
 
     useEffect(() => {
         if (doctor) {
@@ -40,7 +45,6 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null }) => {
                 signature_url: doctor.signature_url
             });
         } else {
-            // Reset for new
             setFormData({
                 name: '',
                 specialty: '',
@@ -53,15 +57,51 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null }) => {
                 active: true,
                 signature_url: null
             });
+            setCredentials({ username: '', password: '' });
         }
         setSignatureFile(null);
+        setShowPassword(false);
     }, [doctor, isOpen]);
+
+    // Auto-generar username cuando cambia el nombre del doctor
+    useEffect(() => {
+        if (isNewDoctor && formData.name && !credentials.username) {
+            const autoUser = formData.name.split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+            setCredentials(prev => ({ ...prev, username: autoUser }));
+        }
+    }, [formData.name, isNewDoctor]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Validar credenciales para doctores nuevos
+        if (showCredentials) {
+            if (!credentials.username.trim()) {
+                alert('El campo "Usuario" es obligatorio para nuevos doctores.');
+                return;
+            }
+            if (!credentials.password || credentials.password.length < 6) {
+                alert('La contraseña debe tener al menos 6 caracteres.');
+                return;
+            }
+        }
+
         try {
             setLoading(true);
-            await onSave({ ...formData, signatureFile });
+            const payload = { ...formData, signatureFile };
+
+            // Adjuntar credenciales si es un doctor nuevo con cuenta de acceso
+            if (showCredentials) {
+                let email = credentials.username.trim().toLowerCase();
+                if (!email.includes('@')) email = `${email}@curae.com`;
+                payload.email = email;
+                payload.authCredentials = {
+                    username: email,
+                    password: credentials.password
+                };
+            }
+
+            await onSave(payload);
             onClose();
         } catch (error) {
             console.error(error);
@@ -143,9 +183,67 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null }) => {
                                 value={formData.email}
                                 onChange={e => setFormData({ ...formData, email: e.target.value })}
                                 placeholder="doctor@clinica.com"
+                                disabled={showCredentials}
                             />
+                            {showCredentials && (
+                                <small style={{ color: '#94a3b8', fontSize: '11px' }}>Se generará automáticamente desde el usuario</small>
+                            )}
                         </div>
                     </div>
+
+                    {/* ========== CREDENCIALES DE ACCESO (solo nuevo doctor + admin) ========== */}
+                    {showCredentials && (
+                        <div style={{ 
+                            border: '2px solid #0f766e', borderRadius: '12px', padding: '16px', 
+                            marginTop: '8px', background: 'linear-gradient(135deg, #f0fdfa 0%, #ecfdf5 100%)' 
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                                <KeyRound size={18} color="#0f766e" />
+                                <span style={{ fontWeight: '600', color: '#0f766e', fontSize: '14px' }}>Credenciales de Acceso al Sistema</span>
+                            </div>
+                            <div className={styles.row}>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>Usuario</label>
+                                    <input
+                                        required
+                                        className={styles.input}
+                                        value={credentials.username}
+                                        onChange={e => setCredentials({ ...credentials, username: e.target.value })}
+                                        placeholder="nombre (sin @)"
+                                        style={{ borderColor: '#0f766e' }}
+                                    />
+                                    <small style={{ color: '#64748b', fontSize: '11px' }}>
+                                        Inicio de sesión: <strong>{credentials.username || '...'}</strong> → {credentials.username ? `${credentials.username.toLowerCase().replace(/[^a-z0-9]/g, '')}@curae.com` : '...'}
+                                    </small>
+                                </div>
+                                <div className={styles.formGroup}>
+                                    <label className={styles.label}>Contraseña</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <input
+                                            required
+                                            type={showPassword ? 'text' : 'password'}
+                                            className={styles.input}
+                                            value={credentials.password}
+                                            onChange={e => setCredentials({ ...credentials, password: e.target.value })}
+                                            placeholder="Mínimo 6 caracteres"
+                                            minLength={6}
+                                            style={{ borderColor: '#0f766e', paddingRight: '40px' }}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            style={{
+                                                position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)',
+                                                background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: '4px'
+                                            }}
+                                        >
+                                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <div className={styles.row}>
                         <div className={styles.formGroup}>

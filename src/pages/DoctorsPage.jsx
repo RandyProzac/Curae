@@ -8,14 +8,16 @@ import {
     Calendar,
     Award
 } from 'lucide-react';
-import { doctorsApi } from '../lib/supabase';
+import { supabase, doctorsApi } from '../lib/supabase';
 import DoctorModal from '../components/doctors/DoctorModal';
+import { useAuth } from '../contexts/useAuth';
 import styles from './DoctorsPage.module.css';
 
 const DoctorsPage = () => {
     const [doctors, setDoctors] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [stats, setStats] = useState({}); // { doctorId: { patientsMonth: 12, ... } }
+    const [stats, setStats] = useState({});
+    const { isAdmin } = useAuth();
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -27,14 +29,12 @@ const DoctorsPage = () => {
             const data = await doctorsApi.getAll();
             setDoctors(data);
 
-            // Fetch stats for each doctor
             const statsMap = {};
             await Promise.all(data.map(async (doc) => {
                 const docStat = await doctorsApi.getStats(doc.id);
                 statsMap[doc.id] = docStat;
             }));
             setStats(statsMap);
-
         } catch (error) {
             console.error('Error fetching doctors:', error);
         } finally {
@@ -57,9 +57,11 @@ const DoctorsPage = () => {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('¿Estás seguro de eliminar este doctor?')) return;
+        if (!window.confirm('¿Estás seguro de eliminar este doctor? Se eliminará también su cuenta de acceso.')) return;
         try {
-            await doctorsApi.delete(id);
+            // Usar RPC para eliminar doctor + auth atomicamente
+            const { error } = await supabase.rpc('delete_doctor_with_auth', { p_doctor_id: id });
+            if (error) throw error;
             setDoctors(prev => prev.filter(d => d.id !== id));
         } catch (error) {
             alert('Error al eliminar doctor: ' + error.message);
@@ -68,30 +70,48 @@ const DoctorsPage = () => {
 
     const handleSave = async (formData) => {
         try {
-            const { signatureFile, ...doctorData } = formData;
+            const { signatureFile, authCredentials, ...doctorData } = formData;
 
-            // Handle signature upload if there's a new file
+            // 1. Subir firma si existe
+            let signatureUrl = doctorData.signature_url || null;
             if (signatureFile) {
                 const url = await doctorsApi.uploadSignature(signatureFile);
-                if (url) {
-                    doctorData.signature_url = url;
-                }
+                if (url) signatureUrl = url;
             }
 
             if (editingDoctor) {
-                // Update doctor
-                const updated = await doctorsApi.update(editingDoctor.id, doctorData);
+                // ============ EDITAR DOCTOR EXISTENTE ============
+                const updated = await doctorsApi.update(editingDoctor.id, {
+                    ...doctorData,
+                    signature_url: signatureUrl
+                });
 
-                // Cascade: Update all events of this doctor if color changed
                 if (editingDoctor.color !== doctorData.color) {
                     await doctorsApi.updateEventColors(editingDoctor.id, doctorData.color);
                 }
 
                 setDoctors(prev => prev.map(d => d.id === updated.id ? updated : d));
+            } else if (authCredentials) {
+                // ============ NUEVO DOCTOR CON CUENTA DE ACCESO (vía RPC) ============
+                const { data, error } = await supabase.rpc('create_doctor_with_auth', {
+                    p_name: doctorData.name,
+                    p_password: authCredentials.password,
+                    p_email: authCredentials.username,
+                    p_specialty: doctorData.specialty || '',
+                    p_phone: doctorData.phone || '',
+                    p_dni: doctorData.dni || '',
+                    p_cop: doctorData.cop || '',
+                    p_color: doctorData.color || '#14b8a6',
+                    p_join_date: doctorData.join_date || new Date().toISOString().split('T')[0],
+                    p_signature_url: signatureUrl
+                });
+
+                if (error) throw error;
             } else {
-                const created = await doctorsApi.create(doctorData);
-                setDoctors(prev => [...prev, created]);
+                // ============ NUEVO DOCTOR SIN CUENTA (fallback, no debería llegar aquí) ============
+                await doctorsApi.create({ ...doctorData, signature_url: signatureUrl });
             }
+
             await fetchDoctors();
         } catch (error) {
             console.error('Error in handleSave:', error);
@@ -99,7 +119,6 @@ const DoctorsPage = () => {
         }
     };
 
-    // Sort alphabetically
     const sortedDoctors = [...doctors].sort((a, b) =>
         a.name.localeCompare(b.name)
     );
@@ -111,10 +130,12 @@ const DoctorsPage = () => {
                     <h2>Gestión de Doctores</h2>
                     <p>Administra el personal médico, especialidades y horarios.</p>
                 </div>
-                <button className={styles.addButton} onClick={handleOpenCreate}>
-                    <UserPlus size={18} />
-                    <span>Nuevo Doctor</span>
-                </button>
+                {isAdmin && (
+                    <button className={styles.addButton} onClick={handleOpenCreate}>
+                        <UserPlus size={18} />
+                        <span>Nuevo Doctor</span>
+                    </button>
+                )}
             </header>
 
             <div className={styles.tableContainer}>
@@ -177,20 +198,24 @@ const DoctorsPage = () => {
                                     </td>
                                     <td>
                                         <div className={styles.rowActions}>
-                                            <button
-                                                className={styles.actionBtn}
-                                                onClick={() => handleOpenEdit(doctor)}
-                                                title="Editar"
-                                            >
-                                                <Edit2 size={16} />
-                                            </button>
-                                            <button
-                                                className={`${styles.actionBtn} ${styles.deleteKey}`}
-                                                onClick={() => handleDelete(doctor.id)}
-                                                title="Eliminar"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
+                                            {isAdmin && (
+                                                <>
+                                                    <button
+                                                        className={styles.actionBtn}
+                                                        onClick={() => handleOpenEdit(doctor)}
+                                                        title="Editar"
+                                                    >
+                                                        <Edit2 size={16} />
+                                                    </button>
+                                                    <button
+                                                        className={`${styles.actionBtn} ${styles.deleteKey}`}
+                                                        onClick={() => handleDelete(doctor.id)}
+                                                        title="Eliminar"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
@@ -212,6 +237,7 @@ const DoctorsPage = () => {
                 onClose={() => setIsModalOpen(false)}
                 onSave={handleSave}
                 doctor={editingDoctor}
+                isAdmin={isAdmin}
             />
         </div>
     );

@@ -5,54 +5,72 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(false); // Para el spinner del botón de login
-  const [isInitializing, setIsInitializing] = useState(true); // Para la carga inicial de JWT
+  const [loading, setLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
 
-  // Escuchar a Supabase Auth por sesiones activas en el navegador
+  // Leer el perfil completo del doctor desde la tabla pública
+  const loadDoctorProfile = async (authUser) => {
+    if (!authUser) return null;
+
+    try {
+      const { data: doctor } = await supabase
+        .from('doctors')
+        .select('id, name')
+        .eq('id', authUser.id)
+        .maybeSingle();
+
+      return {
+        id: authUser.id,
+        email: authUser.email,
+        name: doctor?.name || authUser.user_metadata?.name || 'Doctor(a)',
+        role: authUser.user_metadata?.role || 'DOCTOR',
+      };
+    } catch {
+      // Fallback: usar solo los metadatos del JWT si la tabla falla
+      return {
+        id: authUser.id,
+        email: authUser.email,
+        name: authUser.user_metadata?.name || 'Doctor(a)',
+        role: authUser.user_metadata?.role || 'DOCTOR',
+      };
+    }
+  };
+
   useEffect(() => {
-    const checkSession = async () => {
-      let activeSession = null;
+    let isMounted = true;
+
+    const init = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
-        activeSession = session;
+        const { data: { session } } = await supabase.auth.getSession();
+        if (isMounted) {
+          const profile = await loadDoctorProfile(session?.user || null);
+          setUser(profile);
+        }
       } catch (err) {
-        console.error('Error verificando sesión inicial JWT:', err);
+        console.error('Error verificando sesión:', err);
+        if (isMounted) setUser(null);
+      } finally {
+        if (isMounted) setIsInitializing(false);
       }
-      
-      if (activeSession?.user) {
-        setUser({
-          id: activeSession.user.id,
-          email: activeSession.user.email,
-          role: activeSession.user.user_metadata?.role || 'DOCTOR',
-          name: activeSession.user.user_metadata?.name || 'Doctor(a)',
-        });
-      } else {
-        setUser(null);
-      }
-      setIsInitializing(false);
     };
 
-    checkSession();
+    init();
 
-    // Mantener la sesión sincronizada si abre otra pestaña o el token expira
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        if (session?.user) {
-          setUser({
-            id: session.user.id,
-            email: session.user.email,
-            role: session.user.user_metadata?.role || 'DOCTOR',
-            name: session.user.user_metadata?.name || 'Doctor(a)',
-          });
-        } else {
+      async (event, session) => {
+        if (!isMounted) return;
+        
+        if (event === 'SIGNED_IN' && session?.user) {
+          const profile = await loadDoctorProfile(session.user);
+          setUser(profile);
+        } else if (event === 'SIGNED_OUT') {
           setUser(null);
         }
-        setIsInitializing(false);
       }
     );
 
     return () => {
+      isMounted = false;
       subscription?.unsubscribe();
     };
   }, []);
@@ -60,58 +78,48 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     setLoading(true);
     try {
-      // 🚨 TRUCO DE EXPERIENCIA DE USUARIO (UX):
-      // Si el doctor escribe solo "luciana" (sin arroba), le añadimos "@curae.com" invisiblemente
-      // para que Supabase, que exige obligatoriamente formato de correo, nos deje entrar.
       let loginEmail = email.trim().toLowerCase();
       if (!loginEmail.includes('@')) {
         loginEmail = `${loginEmail}@curae.com`;
       }
 
-      // 🚨 COMUNICACIÓN SEGURA CON SUPABASE
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: loginEmail,
         password
       });
 
       if (error) {
         setLoading(false);
-        // Traducir los errores comunes de Supabase Auth
         if (error.message.includes('Invalid login credentials')) {
-          return { success: false, message: 'Correo o contraseña incorrectos.' };
+          return { success: false, message: 'Usuario o contraseña incorrectos.' };
         }
         return { success: false, message: error.message };
       }
 
-      // El éxito es capturado arriba por onAuthStateChange() y asigna el token JWT
       setLoading(false);
       return { success: true };
-    } catch (err) {
+    } catch {
       setLoading(false);
-      return { success: false, message: 'Ocurrió un error de red al iniciar sesión.' };
+      return { success: false, message: 'Error de red al iniciar sesión.' };
     }
   };
 
   const logout = async () => {
-    setLoading(true);
     try {
       await supabase.auth.signOut();
       setUser(null);
     } catch (e) {
       console.error(e);
-    } finally {
-      setLoading(false);
     }
   };
 
   if (isInitializing) {
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', justifyContent: 'center', alignItems: 'center', background: '#f8fafc', color: '#0f766e', fontFamily: 'system-ui, sans-serif' }}>
-            <div style={{ width: '40px', height: '40px', border: '4px solid #ccfbf1', borderTopColor: '#0f766e', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-            <h3 style={{ marginTop: '20px', fontWeight: '600' }}>Cifrando conexión segura...</h3>
-            <p style={{ color: '#64748b', fontSize: '14px', marginTop: '8px' }}>Validando Tokens JWT con Supabase</p>
-        </div>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', justifyContent: 'center', alignItems: 'center', background: '#f8fafc', color: '#0f766e', fontFamily: 'system-ui, sans-serif' }}>
+        <div style={{ width: '40px', height: '40px', border: '4px solid #ccfbf1', borderTopColor: '#0f766e', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <p style={{ color: '#64748b', fontSize: '14px', marginTop: '16px' }}>Cargando...</p>
+      </div>
     );
   }
 
