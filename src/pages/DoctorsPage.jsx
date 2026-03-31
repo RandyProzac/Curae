@@ -124,11 +124,11 @@ const DoctorsPage = () => {
     };
 
     const medicalStaff = [...doctors]
-        .filter(doctor => doctor.active !== false && doctor.specialty !== 'ADMINISTRACION')
+        .filter(doctor => doctor.active !== false && doctor.specialty !== 'ADMINISTRACION' && doctor.email !== 'gerencia@curae.com')
         .sort((a, b) => a.name.localeCompare(b.name));
 
     const adminStaff = [...doctors]
-        .filter(doctor => doctor.active !== false && doctor.specialty === 'ADMINISTRACION')
+        .filter(doctor => doctor.active !== false && doctor.specialty === 'ADMINISTRACION' && doctor.email !== 'gerencia@curae.com')
         .sort((a, b) => a.name.localeCompare(b.name));
 
     const renderDoctorTable = (staffList, title, showStats = true) => (
