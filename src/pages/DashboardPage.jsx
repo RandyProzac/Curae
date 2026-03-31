@@ -48,6 +48,10 @@ const DashboardPage = () => {
         if (user?.name) {
             const firstName = user.name.split(' ')[0];
             setUserName(firstName);
+        } else if (isAdmin) {
+            setUserName('Administrador');
+        } else {
+            setUserName('Doctor(a)');
         }
 
         // 2. Set Quote (Daily rotation based on day number)
