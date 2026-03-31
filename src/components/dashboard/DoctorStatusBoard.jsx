@@ -25,8 +25,9 @@ const DoctorStatusBoard = () => {
     const fetchStatus = async () => {
         try {
             // 1. Get all doctors
-            const { data: docsRes } = await supabase.from('doctors').select('*');
-            if (!docsRes) return;
+            const { data: allDocs } = await supabase.from('doctors').select('*');
+            if (!allDocs) return;
+            const docsRes = allDocs.filter(d => d.specialty !== 'ADMINISTRACION');
 
             // 2. Get today's appointments
             const todayStr = new Date().toISOString().split('T')[0];

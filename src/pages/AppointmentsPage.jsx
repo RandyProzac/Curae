@@ -157,7 +157,8 @@ const AppointmentsPage = () => {
                     supabase.from('events').select('*')
                 ]);
 
-                const finalDoctors = docsRes.data?.length ? docsRes.data : fallbackDoctors;
+                const allDocs = docsRes.data?.length ? docsRes.data : fallbackDoctors;
+                const finalDoctors = allDocs.filter(d => d.specialty !== 'ADMINISTRACION');
 
                 // Force sync doctors in cache to avoid old name residues
                 sessionCache.doctors = finalDoctors;
