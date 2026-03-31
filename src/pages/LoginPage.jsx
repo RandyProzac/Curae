@@ -79,10 +79,6 @@ const LoginPage = () => {
 
                 <div className={styles.footer}>
                     <p>&copy; 2026 Curae Online Dental Solutions</p>
-                    <div className={styles.testAccount}>
-                        <p><strong>Cuentas de prueba:</strong></p>
-                        <p>Principal: luciana / luciana123</p>
-                    </div>
                 </div>
             </div>
         </div>
