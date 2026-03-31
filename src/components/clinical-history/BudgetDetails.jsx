@@ -132,15 +132,27 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
     };
 
     const saveDiscount = async (itemId) => {
+        if (editingDiscount !== itemId) return;
+
+        const newDiscount = parseFloat(editDiscountVal) || 0;
+        const newType = editDiscountType;
+
         try {
-            await budgetsApi.updateItem(itemId, {
-                discount: parseFloat(editDiscountVal) || 0,
-                discount_type: editDiscountType,
-            });
+            // Optimistic update: notify parent or update local if we had local state
+            // For now, call the API and clear editing state immediately for smoothness
             setEditingDiscount(null);
+            
+            await budgetsApi.updateItem(itemId, {
+                discount: newDiscount,
+                discount_type: newType,
+            });
+            
+            // Background update to sync everything else (totals, etc.)
             onUpdate?.();
         } catch (err) {
             console.error('Error updating discount:', err);
+            alert('Error al guardar el descuento');
+            onUpdate?.(); // Revert to server state
         }
     };
 
@@ -335,20 +347,28 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                                                         type="number" step="0.01" min="0"
                                                         value={editDiscountVal}
                                                         onChange={e => setEditDiscountVal(e.target.value)}
-                                                        style={{ width: '55px', padding: '3px 5px', border: '1px solid #e2e8f0', borderRadius: '4px 0 0 4px', fontSize: '12px', borderRight: 'none' }}
+                                                        onBlur={() => saveDiscount(item.id)}
+                                                        onKeyDown={e => {
+                                                            if (e.key === 'Enter') saveDiscount(item.id);
+                                                            if (e.key === 'Escape') setEditingDiscount(null);
+                                                        }}
+                                                        style={{ width: '60px', padding: '4px 8px', border: '1px solid #0f766e', borderRadius: '4px 0 0 4px', fontSize: '12px', borderRight: 'none', outline: 'none' }}
                                                         autoFocus
-                                                        onKeyDown={e => e.key === 'Enter' && saveDiscount(item.id)}
                                                     />
                                                     <button
-                                                        onClick={() => setEditDiscountType(p => p === 'fixed' ? 'percent' : 'fixed')}
-                                                        style={{ padding: '3px 6px', border: '1px solid #e2e8f0', background: '#f1f5f9', fontSize: '11px', fontWeight: '700', cursor: 'pointer', borderRadius: '0 4px 4px 0', color: '#64748b', minWidth: '26px' }}
+                                                        onMouseDown={(e) => {
+                                                            e.preventDefault(); // Prevent blur before click
+                                                            setEditDiscountType(p => p === 'fixed' ? 'percent' : 'fixed');
+                                                        }}
+                                                        style={{ padding: '4px 8px', border: '1px solid #0f766e', background: '#f0fdfa', fontSize: '11px', fontWeight: '700', cursor: 'pointer', borderRadius: '0 4px 4px 0', color: '#0f766e', minWidth: '32px' }}
                                                     >
                                                         {editDiscountType === 'percent' ? '%' : 'S/'}
                                                     </button>
-                                                    <button onClick={() => saveDiscount(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#10b981', padding: '2px' }}>
-                                                        <Check size={14} />
-                                                    </button>
-                                                    <button onClick={() => setEditingDiscount(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '2px' }}>
+                                                    <button 
+                                                        onClick={() => setEditingDiscount(null)} 
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '4px' }}
+                                                        title="Cancelar"
+                                                    >
                                                         <X size={14} />
                                                     </button>
                                                 </div>
