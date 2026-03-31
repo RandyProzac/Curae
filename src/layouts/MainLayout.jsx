@@ -19,7 +19,7 @@ import {
 import styles from './MainLayout.module.css';
 
 const MainLayout = () => {
-    const { user, logout } = useAuth();
+    const { user, logout, isAdmin } = useAuth();
     const location = useLocation();
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -63,7 +63,7 @@ const MainLayout = () => {
         { path: '/pacientes', icon: <Users size={20} />, label: 'Pacientes' },
         { path: '/servicios', icon: <Stethoscope size={20} />, label: 'Servicios' },
         { path: '/doctores', icon: <Users size={20} />, label: 'Doctores' },
-        { path: '/finanzas', icon: <Wallet size={20} />, label: 'Finanzas' },
+        { path: '/finanzas', icon: <Wallet size={20} />, label: 'Finanzas', adminOnly: true },
         { path: '/inventario', icon: <ShoppingCart size={20} />, label: 'Inventario' },
 
         { path: '/integraciones', icon: <Plug size={20} />, label: 'Integraciones' },
@@ -97,7 +97,7 @@ const MainLayout = () => {
                 </div>
 
                 <nav className={styles.nav}>
-                    {navItems.map((item) => (
+                    {navItems.filter(item => !item.adminOnly || isAdmin).map((item) => (
                         <NavLink
                             key={item.path}
                             to={item.path}

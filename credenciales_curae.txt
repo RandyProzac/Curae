@@ -1,0 +1,21 @@
+======================================================
+  CURAE ONLINE - CREDENCIALES DE ACCESO
+  Actualizado: 31 de Marzo 2026
+======================================================
+
+DOCTOR                          LOGIN           CONTRASEÑA          ROL
+------------------------------- --------------- ------------------- -----------
+Barbara Casapía Prado           barbara         barbara123          DOCTOR
+Diego Casapía Prado             diego           diego123            ADMIN
+Luciana Jiménez Aranzaens       luciana         luciana123          ADMIN
+Luciana Pacheco Hurtado         lupacheco       lupacheco123        DOCTOR
+Maria Elena Prado Rivera        mariaelena      mariaelena123       DOCTOR
+Sergio Huaylla Paredes          sergio          sergio123           DOCTOR
+Stephany Baldarrago Zevallos    stephany        stephany123         DOCTOR
+
+======================================================
+  NOTAS
+======================================================
+- Solo escribir el LOGIN (sin @curae.com) en el campo "Usuario o Correo"
+- Solo ADMIN puede crear, editar y eliminar doctores
+- URL: https://curae.vercel.app
