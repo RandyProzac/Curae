@@ -138,7 +138,11 @@ export default function TreatmentPlans({ patientId, patientName, patientPhone, o
         }
     };
 
-    if (loading) return <div className={styles.loading}>Cargando planes de tratamiento...</div>;
+    // Only show full loading screen on initial fetch (when no plans are in memory)
+    // For subsequent updates (like saving a discount), it happens in the background.
+    if (loading && plans.length === 0) {
+        return <div className={styles.loading}>Cargando planes de tratamiento...</div>;
+    }
 
     if (errorMsg) return (
         <div className={styles.errorState} style={{ padding: '20px', color: '#ef4444', background: '#fef2f2', borderRadius: '8px' }}>
