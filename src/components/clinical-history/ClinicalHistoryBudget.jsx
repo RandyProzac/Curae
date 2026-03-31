@@ -45,11 +45,12 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
         setPrintingBudget(budget);
         setPrintingItemId(itemId);
         // Wait for state to apply and component to render before printing
+        // iPad/Safari requires a bit more time for portals to sync
         setTimeout(() => {
             window.print();
             setPrintingBudget(null);
             setPrintingItemId(null);
-        }, 500);
+        }, 800);
     };
 
     const loadBudgets = useCallback(async () => {

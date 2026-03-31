@@ -1,19 +1,29 @@
-/* This component is only visible when printing */
+/* Better way to hide element from user but keep it for Safari/iOS Print tasks */
 .printableWrapper {
-    display: none;
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: -1;
 }
 
 @media print {
+    @page {
+        margin: 1cm;
+    }
 
-    /* Hide the main application root */
-    :global(#root) {
+    /* Target root siblings more safely */
+    :global(body > *:not(#printable-budget-container)) {
         display: none !important;
     }
 
     .printableWrapper {
         display: block !important;
         position: static !important;
-        width: 100%;
+        opacity: 1 !important;
+        width: 100% !important;
+        height: auto !important;
         background: white !important;
         margin: 0 !important;
         padding: 0 !important;
@@ -21,6 +31,7 @@
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         font-size: 11pt;
         visibility: visible !important;
+        z-index: 9999 !important;
     }
 
     /* Print Header */
