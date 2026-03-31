@@ -120,7 +120,7 @@ const DoctorsPage = () => {
     };
 
     const sortedDoctors = [...doctors]
-        .filter(doctor => doctor.active !== false)
+        .filter(doctor => doctor.active !== false && doctor.specialty !== 'ADMINISTRACION')
         .sort((a, b) => a.name.localeCompare(b.name));
 
     return (
