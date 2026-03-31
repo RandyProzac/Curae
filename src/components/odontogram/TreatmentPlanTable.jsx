@@ -218,17 +218,6 @@ export default function TreatmentPlanTable({
                                         {/* Service picker popover */}
                                         {isPickerOpen && (
                                             <div ref={pickerRef} style={styles.picker}>
-                                                <div style={styles.pickerSearch}>
-                                                    <Search size={14} style={{ color: '#94a3b8' }} />
-                                                    <input
-                                                        type="text"
-                                                        value={searchTerm}
-                                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                                        placeholder="Buscar servicio..."
-                                                        style={styles.pickerInput}
-                                                        autoFocus
-                                                    />
-                                                </div>
                                                 <div style={styles.pickerList}>
                                                     {Object.entries(groupedServices).map(([cat, svcList]) => (
                                                         <div key={cat}>
@@ -263,6 +252,17 @@ export default function TreatmentPlanTable({
                                                     {filteredServices.length === 0 && (
                                                         <p style={styles.pickerEmpty}>No se encontraron servicios</p>
                                                     )}
+                                                </div>
+                                                <div style={styles.pickerSearch}>
+                                                    <Search size={14} style={{ color: '#94a3b8' }} />
+                                                    <input
+                                                        type="text"
+                                                        value={searchTerm}
+                                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                                        placeholder="Buscar servicio..."
+                                                        style={styles.pickerInput}
+                                                        autoFocus
+                                                    />
                                                 </div>
                                             </div>
                                         )}
@@ -436,21 +436,24 @@ const styles = {
         right: 0,
         zIndex: 9999,
         background: 'white',
-        border: '1px solid #e2e8f0',
+        border: '1px solid #cbd5e1',
         borderRadius: '10px',
-        boxShadow: '0 -8px 24px rgba(0,0,0,0.12)',
-        maxHeight: '320px',
+        boxShadow: '0 -8px 30px rgba(0,0,0,0.15)',
+        maxHeight: '350px',
         display: 'flex',
         flexDirection: 'column',
-        minWidth: '300px',
-        marginBottom: '4px',
+        minWidth: '320px',
+        marginBottom: '8px',
     },
     pickerSearch: {
         display: 'flex',
         alignItems: 'center',
         gap: '8px',
         padding: '10px 12px',
-        borderBottom: '1px solid #f1f5f9',
+        borderTop: '1px solid #f1f5f9',
+        background: '#f8fafc', // Light background for search at bottom
+        borderBottomLeftRadius: '10px',
+        borderBottomRightRadius: '10px',
     },
     pickerInput: {
         flex: 1,
