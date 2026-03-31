@@ -8,71 +8,33 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
 
-  // Leer el perfil completo del doctor desde la tabla pública
-  const loadDoctorProfile = async (authUser) => {
+  const buildProfile = (authUser) => {
     if (!authUser) return null;
-
-    try {
-      const { data: doctor } = await supabase
-        .from('doctors')
-        .select('id, name')
-        .eq('id', authUser.id)
-        .maybeSingle();
-
-      return {
-        id: authUser.id,
-        email: authUser.email,
-        name: doctor?.name || authUser.user_metadata?.name || 'Doctor(a)',
-        role: authUser.user_metadata?.role || 'DOCTOR',
-      };
-    } catch {
-      // Fallback: usar solo los metadatos del JWT si la tabla falla
-      return {
-        id: authUser.id,
-        email: authUser.email,
-        name: authUser.user_metadata?.name || 'Doctor(a)',
-        role: authUser.user_metadata?.role || 'DOCTOR',
-      };
-    }
+    return {
+      id: authUser.id,
+      email: authUser.email,
+      name: authUser.user_metadata?.name || 'Doctor(a)',
+      role: authUser.user_metadata?.role || 'DOCTOR',
+    };
   };
 
   useEffect(() => {
-    let isMounted = true;
-
-    const init = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (isMounted) {
-          const profile = await loadDoctorProfile(session?.user || null);
-          setUser(profile);
-        }
-      } catch (err) {
-        console.error('Error verificando sesión:', err);
-        if (isMounted) setUser(null);
-      } finally {
-        if (isMounted) setIsInitializing(false);
-      }
-    };
-
-    init();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ? buildProfile(session.user) : null);
+      setIsInitializing(false);
+    }).catch(() => {
+      setUser(null);
+      setIsInitializing(false);
+    });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!isMounted) return;
-        
-        if (event === 'SIGNED_IN' && session?.user) {
-          const profile = await loadDoctorProfile(session.user);
-          setUser(profile);
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-        }
+      (_event, session) => {
+        setUser(session?.user ? buildProfile(session.user) : null);
+        setIsInitializing(false);
       }
     );
 
-    return () => {
-      isMounted = false;
-      subscription?.unsubscribe();
-    };
+    return () => subscription?.unsubscribe();
   }, []);
 
   const login = async (email, password) => {
@@ -88,15 +50,13 @@ export const AuthProvider = ({ children }) => {
         password
       });
 
+      setLoading(false);
       if (error) {
-        setLoading(false);
         if (error.message.includes('Invalid login credentials')) {
           return { success: false, message: 'Usuario o contraseña incorrectos.' };
         }
         return { success: false, message: error.message };
       }
-
-      setLoading(false);
       return { success: true };
     } catch {
       setLoading(false);
@@ -105,12 +65,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    try {
-      await supabase.auth.signOut();
-      setUser(null);
-    } catch (e) {
-      console.error(e);
-    }
+    await supabase.auth.signOut();
+    setUser(null);
   };
 
   if (isInitializing) {
