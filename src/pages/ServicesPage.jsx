@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Trash2, Edit2, ChevronDown, ChevronUp, Package } from 'lucide-react';
 import { servicesApi } from '../lib/supabase';
+import { useAuth } from '../contexts/useAuth';
 import styles from '../components/services/ServicesPage.module.css';
 
 // Category Icons Map
@@ -21,6 +22,7 @@ const CATEGORY_ICONS = {
 const CATEGORIES_LIST = Object.keys(CATEGORY_ICONS).filter(c => c !== 'Sin Categoría');
 
 const ServicesPage = () => {
+    const { isAdmin } = useAuth();
     const [services, setServices] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -156,10 +158,12 @@ const ServicesPage = () => {
                     <h3>Catálogo de Servicios</h3>
                     <p>Gestiona precios, descripciones y categorías de tus tratamientos</p>
                 </div>
-                <button className={styles.addButton} onClick={handleOpenCreate}>
-                    <Plus size={18} />
-                    <span>Nuevo Servicio</span>
-                </button>
+                {isAdmin && (
+                    <button className={styles.addButton} onClick={handleOpenCreate}>
+                        <Plus size={18} />
+                        <span>Nuevo Servicio</span>
+                    </button>
+                )}
             </header>
 
             <div className={styles.controls}>
@@ -217,20 +221,24 @@ const ServicesPage = () => {
                                                 </td>
                                                 <td width="20%">
                                                     <div className={styles.actions}>
-                                                        <button
-                                                            className={styles.actionBtn}
-                                                            onClick={() => handleOpenEdit(service)}
-                                                            title="Editar"
-                                                        >
-                                                            <Edit2 size={16} />
-                                                        </button>
-                                                        <button
-                                                            className={`${styles.actionBtn} ${styles.delete}`}
-                                                            onClick={() => handleDelete(service.id)}
-                                                            title="Eliminar"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
+                                                        {isAdmin && (
+                                                            <>
+                                                                <button
+                                                                    className={styles.actionBtn}
+                                                                    onClick={() => handleOpenEdit(service)}
+                                                                    title="Editar"
+                                                                >
+                                                                    <Edit2 size={16} />
+                                                                </button>
+                                                                <button
+                                                                    className={`${styles.actionBtn} ${styles.delete}`}
+                                                                    onClick={() => handleDelete(service.id)}
+                                                                    title="Eliminar"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>

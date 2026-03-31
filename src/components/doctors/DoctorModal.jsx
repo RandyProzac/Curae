@@ -193,13 +193,10 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null, isAdmin = false }
 
                     {/* ========== CREDENCIALES DE ACCESO (solo nuevo doctor + admin) ========== */}
                     {showCredentials && (
-                        <div style={{ 
-                            border: '2px solid #0f766e', borderRadius: '12px', padding: '16px', 
-                            marginTop: '8px', background: 'linear-gradient(135deg, #f0fdfa 0%, #ecfdf5 100%)' 
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                        <div className={styles.credentialsBox}>
+                            <div className={styles.credentialsHeader}>
                                 <KeyRound size={18} color="#0f766e" />
-                                <span style={{ fontWeight: '600', color: '#0f766e', fontSize: '14px' }}>Credenciales de Acceso al Sistema</span>
+                                <span className={styles.credentialsTitle}>Credenciales de Acceso al Sistema</span>
                             </div>
                             <div className={styles.row}>
                                 <div className={styles.formGroup}>
@@ -212,9 +209,9 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null, isAdmin = false }
                                         placeholder="nombre (sin @)"
                                         style={{ borderColor: '#0f766e' }}
                                     />
-                                    <small style={{ color: '#64748b', fontSize: '11px' }}>
+                                    <span className={styles.credentialsInfo}>
                                         Inicio de sesión: <strong>{credentials.username || '...'}</strong> → {credentials.username ? `${credentials.username.toLowerCase().replace(/[^a-z0-9]/g, '')}@curae.com` : '...'}
-                                    </small>
+                                    </span>
                                 </div>
                                 <div className={styles.formGroup}>
                                     <label className={styles.label}>Contraseña</label>

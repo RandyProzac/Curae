@@ -35,7 +35,7 @@ const DashboardPage = () => {
     });
     const [lowStockItems, setLowStockItems] = useState([]);
     const [loading, setLoading] = useState(true);
-    const { user } = useAuth();
+    const { user, isAdmin } = useAuth();
     const [userName, setUserName] = useState('Doctor');
     const [quote, setQuote] = useState('');
     const navigate = useNavigate();
@@ -179,9 +179,12 @@ const DashboardPage = () => {
             trend: 'vs mes anterior',
             icon: <DollarSign size={24} />,
             color: 'iconGold',
-            trendColor: 'trendUp'
+            trendColor: 'trendUp',
+            adminOnly: true
         },
     ];
+
+    const visibleKpis = kpiData.filter(stat => !stat.adminOnly || isAdmin);
 
     // Removing static recentActivity array
 
@@ -212,7 +215,7 @@ const DashboardPage = () => {
 
             {/* KPI Cards */}
             <section className={styles.statsRow}>
-                {kpiData.map((stat, index) => (
+                {visibleKpis.map((stat, index) => (
                     <div key={index} className={styles.statCard}>
                         <div className={styles.statContent}>
                             <span className={styles.statValue}>{stat.value}</span>
@@ -232,30 +235,32 @@ const DashboardPage = () => {
             {/* Recent Activity & Quick Actions */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
 
-                {/* Activity Feed (High Budget Plans) */}
-                <section>
-                    <h3 className={styles.sectionTitle}>Planes Destacados (Recientes)</h3>
-                    <div className={styles.activityCard}>
-                        {recentActivity.length === 0 ? (
-                            <p style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>No hay planes de tratamiento activos.</p>
-                        ) : (
-                            <ul className={styles.activityList}>
-                                {recentActivity.map((plan, index) => (
-                                    <li key={index} className={styles.activityItem}>
-                                        <span className={styles.activityTime} style={{ fontSize: '13px', fontWeight: 600 }}>
-                                            {formatCurrency(plan.totalBudget)}
-                                        </span>
-                                        <div className={styles.activityInfo}>
-                                            <span className={styles.activityTitle}>{plan.title || 'Plan General'}</span>
-                                            <span className={styles.activityDesc}>{plan.patient?.first_name} {plan.patient?.last_name}</span>
-                                        </div>
-                                        <button className={styles.actionButton} onClick={() => navigate(`/pacientes/${plan.patient_id}/historia-clinica`)}>Ver</button>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </div>
-                </section>
+                {/* Activity Feed (High Budget Plans) - ONLY FOR ADMINS */}
+                {isAdmin && (
+                    <section>
+                        <h3 className={styles.sectionTitle}>Planes Destacados (Recientes)</h3>
+                        <div className={styles.activityCard}>
+                            {recentActivity.length === 0 ? (
+                                <p style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>No hay planes de tratamiento activos.</p>
+                            ) : (
+                                <ul className={styles.activityList}>
+                                    {recentActivity.map((plan, index) => (
+                                        <li key={index} className={styles.activityItem}>
+                                            <span className={styles.activityTime} style={{ fontSize: '13px', fontWeight: 600 }}>
+                                                {formatCurrency(plan.totalBudget)}
+                                            </span>
+                                            <div className={styles.activityInfo}>
+                                                <span className={styles.activityTitle}>{plan.title || 'Plan General'}</span>
+                                                <span className={styles.activityDesc}>{plan.patient?.first_name} {plan.patient?.last_name}</span>
+                                            </div>
+                                            <button className={styles.actionButton} onClick={() => navigate(`/pacientes/${plan.patient_id}/historia-clinica`)}>Ver</button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    </section>
+                )}
 
                 {/* Próximas Citas */}
                 <section>

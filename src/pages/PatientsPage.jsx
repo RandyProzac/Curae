@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, UserPlus, Trash2, Calendar as CalendarIcon, FileText, Clock, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/useAuth';
 import NewPatientModal from '../components/patients/NewPatientModal';
 import PatientDetailSidebar from '../components/patients/PatientDetailSidebar';
 import styles from '../components/patients/PatientList.module.css';
@@ -44,6 +45,7 @@ const getRelativeDate = (dateStr) => {
 
 const PatientsPage = () => {
     const navigate = useNavigate();
+    const { isAdmin } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -261,16 +263,18 @@ const PatientsPage = () => {
                                                 <FileText size={15} />
                                                 <span>Historia Clínica</span>
                                             </button>
-                                            <button
-                                                className={`${styles.actionBtn} ${styles.deleteBtn}`}
-                                                onClick={() => {
-                                                    setPatientToDelete(patient);
-                                                    setIsDeleteModalOpen(true);
-                                                }}
-                                                title="Eliminar Paciente"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
+                                            {isAdmin && (
+                                                <button
+                                                    className={`${styles.actionBtn} ${styles.deleteBtn}`}
+                                                    onClick={() => {
+                                                        setPatientToDelete(patient);
+                                                        setIsDeleteModalOpen(true);
+                                                    }}
+                                                    title="Eliminar Paciente"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))
