@@ -127,7 +127,7 @@ const DoctorsPage = () => {
         .filter(doctor => doctor.active !== false && doctor.specialty === 'ADMINISTRACION')
         .sort((a, b) => a.name.localeCompare(b.name));
 
-    const renderDoctorTable = (staffList, title) => (
+    const renderDoctorTable = (staffList, title, showStats = true) => (
         <div className={styles.tableSection}>
             <h3 className={styles.sectionTitle}>{title}</h3>
             <div className={styles.tableContainer}>
@@ -136,7 +136,7 @@ const DoctorsPage = () => {
                         <tr>
                             <th>{title === 'Cuerpo Médico' ? 'Doctor' : 'Administrador'}</th>
                             <th>Cargo / Especialidad</th>
-                            <th>Métricas (Mes)</th>
+                            {showStats && <th>Métricas (Mes)</th>}
                             <th>Contacto</th>
                             <th>Fecha Ingreso</th>
                             <th style={{ textAlign: 'right' }}>Acciones</th>
@@ -162,12 +162,14 @@ const DoctorsPage = () => {
                                 <td>
                                     <span className={styles.badge}>{doctor.specialty || 'General'}</span>
                                 </td>
-                                <td>
-                                    <div className={styles.statCell}>
-                                        <span style={{ fontSize: '1.2em' }}>{stats[doctor.id]?.patientsMonth || 0}</span>
-                                        <span style={{ fontSize: '0.8em', color: '#94a3b8', marginLeft: '4px' }}>Pacientes</span>
-                                    </div>
-                                </td>
+                                {showStats && (
+                                    <td>
+                                        <div className={styles.statCell}>
+                                            <span style={{ fontSize: '1.2em' }}>{stats[doctor.id]?.patientsMonth || 0}</span>
+                                            <span style={{ fontSize: '0.8em', color: '#94a3b8', marginLeft: '4px' }}>Pacientes</span>
+                                        </div>
+                                    </td>
+                                )}
                                 <td>
                                     <div className={styles.contactCell}>
                                         {doctor.phone && (
@@ -211,7 +213,7 @@ const DoctorsPage = () => {
                         ))}
                         {staffList.length === 0 && (
                             <tr>
-                                <td colSpan="6" style={{ textAlign: 'center', padding: '32px', color: '#94a3b8' }}>
+                                <td colSpan={showStats ? "6" : "5"} style={{ textAlign: 'center', padding: '32px', color: '#94a3b8' }}>
                                     No hay {title.toLowerCase()} registrados.
                                 </td>
                             </tr>
@@ -242,9 +244,9 @@ const DoctorsPage = () => {
                     <div style={{ padding: '32px', textAlign: 'center', color: '#64748b' }}>Cargando personal...</div>
                 ) : (
                     <>
-                        {renderDoctorTable(medicalStaff, 'Cuerpo Médico')}
+                        {renderDoctorTable(medicalStaff, 'Cuerpo Médico', true)}
                         <div style={{ marginTop: '48px' }}>
-                            {renderDoctorTable(adminStaff, 'Personal Administrativo')}
+                            {renderDoctorTable(adminStaff, 'Personal Administrativo', false)}
                         </div>
                     </>
                 )}
