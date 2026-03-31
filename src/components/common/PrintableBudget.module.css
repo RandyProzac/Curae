@@ -11,38 +11,40 @@
 @media print {
     @page {
         margin: 1cm;
+        size: auto;
     }
 
-    /* Target root siblings more safely */
-    :global(body > *:not(#printable-budget-container)) {
-        display: none !important;
-    }
-
-    .printableWrapper {
-        display: block !important;
-        position: static !important;
-        opacity: 1 !important;
-        width: 100% !important;
-        height: auto !important;
+    /* THE MAGIC FIX FOR iOS: Hide everything but keep context */
+    :global(body) {
+        visibility: hidden !important;
         background: white !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        color: black !important;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        font-size: 11pt;
+    }
+
+    /* Bring back only the budget */
+    .printableWrapper {
         visibility: visible !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        display: block !important;
+        opacity: 1 !important;
         z-index: 9999 !important;
+    }
+
+    /* Ensure children are visible too */
+    .printableWrapper * {
+        visibility: visible !important;
     }
 
     /* Print Header */
     .header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        /* Center to match logo with text */
-        border-bottom: 2px solid #0f766e;
-        padding-bottom: 20px;
-        margin-bottom: 25px;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        border-bottom: 2px solid #0f766e !important;
+        padding-bottom: 20px !important;
+        margin-bottom: 25px !important;
     }
 
     .headerLeft {
