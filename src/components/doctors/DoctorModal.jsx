@@ -10,7 +10,10 @@ const PRESET_COLORS = [
     '#06b6d4', '#475569'
 ];
 
-const DoctorModal = ({ isOpen, onClose, onSave, doctor = null, isAdmin = false }) => {
+const DoctorModal = ({ isOpen, onClose, onSave, doctor = null, isAdmin = false, mode = 'DOCTOR' }) => {
+    const isEditing = !!doctor;
+    const currentMode = doctor?.specialty === 'ADMINISTRACION' ? 'ADMIN' : mode;
+
     const [formData, setFormData] = useState({
         name: '',
         specialty: '',
@@ -47,7 +50,7 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null, isAdmin = false }
         } else {
             setFormData({
                 name: '',
-                specialty: '',
+                specialty: currentMode === 'ADMIN' ? 'ADMINISTRACION' : '',
                 dni: '',
                 cop: '',
                 phone: '',
@@ -61,7 +64,7 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null, isAdmin = false }
         }
         setSignatureFile(null);
         setShowPassword(false);
-    }, [doctor, isOpen]);
+    }, [doctor, isOpen, currentMode]);
 
     // Auto-generar username cuando cambia el nombre del doctor
     useEffect(() => {
@@ -74,10 +77,10 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null, isAdmin = false }
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Validar credenciales para doctores nuevos
+        // Validar credenciales para personal nuevo
         if (showCredentials) {
             if (!credentials.username.trim()) {
-                alert('El campo "Usuario" es obligatorio para nuevos doctores.');
+                alert('El campo "Usuario" es obligatorio para nuevos accesos.');
                 return;
             }
             if (!credentials.password || credentials.password.length < 6) {
@@ -89,6 +92,11 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null, isAdmin = false }
         try {
             setLoading(true);
             const payload = { ...formData, signatureFile };
+
+            // Forzar especialidad administrativa si estamos en ese modo
+            if (currentMode === 'ADMIN') {
+                payload.specialty = 'ADMINISTRACION';
+            }
 
             // Adjuntar credenciales si es un doctor nuevo con cuenta de acceso
             if (showCredentials) {
@@ -105,7 +113,7 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null, isAdmin = false }
             onClose();
         } catch (error) {
             console.error(error);
-            alert('Error al guardar doctor: ' + error.message);
+            alert('Error al guardar personal: ' + error.message);
         } finally {
             setLoading(false);
         }
@@ -117,7 +125,7 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null, isAdmin = false }
         <div className={styles.overlay}>
             <div className={styles.modal}>
                 <div className={styles.header}>
-                    <h2>{doctor ? 'Editar Doctor' : 'Nuevo Doctor'}</h2>
+                    <h2>{isEditing ? `Editar ${currentMode === 'ADMIN' ? 'Personal' : 'Doctor'}` : `Nuevo ${currentMode === 'ADMIN' ? 'Asistente / Administrativo' : 'Doctor'}`}</h2>
                     <button className={styles.closeButton} onClick={onClose}>
                         <X size={20} />
                     </button>
@@ -136,17 +144,19 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null, isAdmin = false }
                     </div>
 
                     <div className={styles.row3}>
+                        {currentMode === 'DOCTOR' && (
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>Especialidad</label>
+                                <input
+                                    className={styles.input}
+                                    value={formData.specialty}
+                                    onChange={e => setFormData({ ...formData, specialty: e.target.value })}
+                                    placeholder="Ej. Ortodoncia"
+                                />
+                            </div>
+                        )}
                         <div className={styles.formGroup}>
-                            <label className={styles.label}>Especialidad</label>
-                            <input
-                                className={styles.input}
-                                value={formData.specialty}
-                                onChange={e => setFormData({ ...formData, specialty: e.target.value })}
-                                placeholder="Ej. Ortodoncia"
-                            />
-                        </div>
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>DNI / CMP</label>
+                            <label className={styles.label}>DNI {currentMode === 'DOCTOR' ? '/ CMP' : ''}</label>
                             <input
                                 className={styles.input}
                                 value={formData.dni}
@@ -154,15 +164,17 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null, isAdmin = false }
                                 placeholder="12345678"
                             />
                         </div>
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>COP</label>
-                            <input
-                                className={styles.input}
-                                value={formData.cop}
-                                onChange={e => setFormData({ ...formData, cop: e.target.value })}
-                                placeholder="123456"
-                            />
-                        </div>
+                        {currentMode === 'DOCTOR' && (
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>COP</label>
+                                <input
+                                    className={styles.input}
+                                    value={formData.cop}
+                                    onChange={e => setFormData({ ...formData, cop: e.target.value })}
+                                    placeholder="123456"
+                                />
+                            </div>
+                        )}
                     </div>
 
                     <div className={styles.row}>
@@ -265,86 +277,90 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null, isAdmin = false }
                         </div>
                     </div>
 
-                    <div className={styles.formGroup}>
-                        <label className={styles.label}>Firma del Doctor (PNG Transparente)</label>
-                        <div className={styles.signatureUploadContainer}>
-                            <div className={styles.fileUploadWrapper}>
-                                <input
-                                    type="file"
-                                    id="signature-upload"
-                                    accept="image/png"
-                                    onChange={(e) => {
-                                        if (e.target.files && e.target.files[0]) {
-                                            setSignatureFile(e.target.files[0]);
-                                        }
-                                    }}
-                                    className={styles.fileInputHidden}
-                                />
-                                <label htmlFor="signature-upload" className={styles.fileUploadButton}>
-                                    <Upload size={16} /> Seleccionar archivo
-                                </label>
-                                <span className={styles.fileName}>
-                                    {signatureFile ? signatureFile.name : 'Sin archivos seleccionados'}
-                                </span>
-                            </div>
-                            {(signatureFile || formData.signature_url) && (
-                                <div className={styles.signaturePreview}>
-                                    <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Vista previa:</p>
-                                    <img
-                                        src={signatureFile ? URL.createObjectURL(signatureFile) : formData.signature_url}
-                                        alt="Firma"
-                                        style={{ maxHeight: '60px', border: '1px dashed #cbd5e1', padding: '4px', borderRadius: '4px', display: 'block', backgroundColor: '#f8fafc' }}
-                                    />
-                                </div>
-                            )}
-                        </div>
-                        <small style={{ color: '#94a3b8', fontSize: '12px' }}>Obligatorio para que la firma aparezca en los presupuestos impresos.</small>
-                    </div>
-
-                    <div className={styles.formGroup}>
-                        <div className={styles.labelRow}>
-                            <label className={styles.label}>Color de Calendario</label>
-                            <span className={styles.colorValue}>{formData.color.toUpperCase()}</span>
-                        </div>
-                        <div className={styles.colorsGrid}>
-                            {PRESET_COLORS.map(c => (
-                                <div
-                                    key={c}
-                                    className={`${styles.colorOption} ${formData.color === c ? styles.selected : ''}`}
-                                    style={{ backgroundColor: c }}
-                                    onClick={() => setFormData({ ...formData, color: c })}
-                                >
-                                    {formData.color === c && (
-                                        <Check size={18} color="white" />
-                                    )}
-                                </div>
-                            ))}
-
-                            {/* Custom Color Picker */}
-                            <div className={styles.customColorWrapper}>
-                                <div
-                                    className={`${styles.colorOption} ${styles.customTrigger} ${!PRESET_COLORS.includes(formData.color) ? styles.selected : ''}`}
-                                    style={{
-                                        backgroundColor: !PRESET_COLORS.includes(formData.color) ? formData.color : '#f1f5f9',
-                                        border: PRESET_COLORS.includes(formData.color) ? '2px dashed #cbd5e1' : '3px solid white'
-                                    }}
-                                >
+                    {currentMode === 'DOCTOR' && (
+                        <div className={styles.formGroup}>
+                            <label className={styles.label}>Firma del Doctor (PNG Transparente)</label>
+                            <div className={styles.signatureUploadContainer}>
+                                <div className={styles.fileUploadWrapper}>
                                     <input
-                                        type="color"
-                                        className={styles.colorInputHidden}
-                                        value={formData.color}
-                                        onChange={e => setFormData({ ...formData, color: e.target.value })}
-                                        title="Color personalizado"
+                                        type="file"
+                                        id="signature-upload"
+                                        accept="image/png"
+                                        onChange={(e) => {
+                                            if (e.target.files && e.target.files[0]) {
+                                                setSignatureFile(e.target.files[0]);
+                                            }
+                                        }}
+                                        className={styles.fileInputHidden}
                                     />
-                                    {(!PRESET_COLORS.includes(formData.color)) ? (
-                                        <Check size={18} color="white" />
-                                    ) : (
-                                        <span style={{ fontSize: '20px', color: '#94a3b8', lineHeight: 1 }}>+</span>
-                                    )}
+                                    <label htmlFor="signature-upload" className={styles.fileUploadButton}>
+                                        <Upload size={16} /> Seleccionar archivo
+                                    </label>
+                                    <span className={styles.fileName}>
+                                        {signatureFile ? signatureFile.name : 'Sin archivos seleccionados'}
+                                    </span>
+                                </div>
+                                {(signatureFile || formData.signature_url) && (
+                                    <div className={styles.signaturePreview}>
+                                        <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Vista previa:</p>
+                                        <img
+                                            src={signatureFile ? URL.createObjectURL(signatureFile) : formData.signature_url}
+                                            alt="Firma"
+                                            style={{ maxHeight: '60px', border: '1px dashed #cbd5e1', padding: '4px', borderRadius: '4px', display: 'block', backgroundColor: '#f8fafc' }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                            <small style={{ color: '#94a3b8', fontSize: '12px' }}>Obligatorio para que la firma aparezca en los presupuestos impresos.</small>
+                        </div>
+                    )}
+
+                    {currentMode === 'DOCTOR' && (
+                        <div className={styles.formGroup}>
+                            <div className={styles.labelRow}>
+                                <label className={styles.label}>Color de Calendario</label>
+                                <span className={styles.colorValue}>{formData.color.toUpperCase()}</span>
+                            </div>
+                            <div className={styles.colorsGrid}>
+                                {PRESET_COLORS.map(c => (
+                                    <div
+                                        key={c}
+                                        className={`${styles.colorOption} ${formData.color === c ? styles.selected : ''}`}
+                                        style={{ backgroundColor: c }}
+                                        onClick={() => setFormData({ ...formData, color: c })}
+                                    >
+                                        {formData.color === c && (
+                                            <Check size={18} color="white" />
+                                        )}
+                                    </div>
+                                ))}
+
+                                {/* Custom Color Picker */}
+                                <div className={styles.customColorWrapper}>
+                                    <div
+                                        className={`${styles.colorOption} ${styles.customTrigger} ${!PRESET_COLORS.includes(formData.color) ? styles.selected : ''}`}
+                                        style={{
+                                            backgroundColor: !PRESET_COLORS.includes(formData.color) ? formData.color : '#f1f5f9',
+                                            border: PRESET_COLORS.includes(formData.color) ? '2px dashed #cbd5e1' : '3px solid white'
+                                        }}
+                                    >
+                                        <input
+                                            type="color"
+                                            className={styles.colorInputHidden}
+                                            value={formData.color}
+                                            onChange={e => setFormData({ ...formData, color: e.target.value })}
+                                            title="Color personalizado"
+                                        />
+                                        {(!PRESET_COLORS.includes(formData.color)) ? (
+                                            <Check size={18} color="white" />
+                                        ) : (
+                                            <span style={{ fontSize: '20px', color: '#94a3b8', lineHeight: 1 }}>+</span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    )}
 
                     <div className={styles.footer}>
                         <button type="button" className={styles.cancelButton} onClick={onClose}>
@@ -352,7 +368,7 @@ const DoctorModal = ({ isOpen, onClose, onSave, doctor = null, isAdmin = false }
                         </button>
                         <button type="submit" className={styles.saveButton} disabled={loading}>
                             <Save size={18} />
-                            {loading ? 'Guardando...' : 'Guardar Doctor'}
+                            {loading ? 'Guardando...' : `Guardar ${currentMode === 'ADMIN' ? 'Personal' : 'Doctor'}`}
                         </button>
                     </div>
                 </form>

@@ -21,6 +21,7 @@ const DoctorsPage = () => {
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [modalMode, setModalMode] = useState('DOCTOR'); // 'DOCTOR' or 'ADMIN'
     const [editingDoctor, setEditingDoctor] = useState(null);
 
     const fetchDoctors = async () => {
@@ -46,18 +47,21 @@ const DoctorsPage = () => {
         fetchDoctors();
     }, []);
 
-    const handleOpenCreate = () => {
+    const handleOpenCreate = (mode = 'DOCTOR') => {
+        setModalMode(mode);
         setEditingDoctor(null);
         setIsModalOpen(true);
     };
 
     const handleOpenEdit = (doctor) => {
+        setModalMode(doctor.specialty === 'ADMINISTRACION' ? 'ADMIN' : 'DOCTOR');
         setEditingDoctor(doctor);
         setIsModalOpen(true);
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('¿Estás seguro de eliminar este doctor? Se eliminará también su cuenta de acceso.')) return;
+        const isDoctor = medicalStaff.some(d => d.id === id);
+        if (!window.confirm(`¿Estás seguro de eliminar este ${isDoctor ? 'doctor' : 'personal administrativa'}? Se eliminará también su cuenta de acceso.`)) return;
         try {
             // Usar RPC para eliminar doctor + auth atomicamente
             const { error } = await supabase.rpc('delete_doctor_with_auth', { p_doctor_id: id });
@@ -134,12 +138,12 @@ const DoctorsPage = () => {
                 <table className={styles.table}>
                     <thead>
                         <tr>
-                            <th>{title === 'Cuerpo Médico' ? 'Doctor' : 'Administrador'}</th>
-                            <th>Cargo / Especialidad</th>
-                            {showStats && <th>Métricas (Mes)</th>}
+                            <th>{title === 'Cuerpo Médico' ? 'Doctor' : 'Identidad'}</th>
+                            <th>{title === 'Cuerpo Médico' ? 'Especialidad' : 'Cargo'}</th>
+                            {showStats && <th>Citas (Mes)</th>}
                             <th>Contacto</th>
-                            <th>Fecha Ingreso</th>
-                            <th style={{ textAlign: 'right' }}>Acciones</th>
+                            <th>Ingreso</th>
+                            <th style={{ textAlign: 'right' }}>Gestión</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -229,13 +233,19 @@ const DoctorsPage = () => {
             <header className={styles.header}>
                 <div className={styles.title}>
                     <h2>Gestión de Personal</h2>
-                    <p>Administra el cuerpo médico y el personal administrativo.</p>
+                    <p>Administra el cuerpo médico y el equipo administrativo de la clínica.</p>
                 </div>
                 {isAdmin && (
-                    <button className={styles.addButton} onClick={handleOpenCreate}>
-                        <UserPlus size={18} />
-                        <span>Nuevo Personal</span>
-                    </button>
+                    <div className={styles.headerActions}>
+                        <button className={`${styles.addButton} ${styles.btnAdmin}`} onClick={() => handleOpenCreate('ADMIN')}>
+                            <UserPlus size={18} />
+                            <span>+ Nuevo Asistente / Administrativo</span>
+                        </button>
+                        <button className={`${styles.addButton} ${styles.btnDoctor}`} onClick={() => handleOpenCreate('DOCTOR')}>
+                            <UserPlus size={18} />
+                            <span>+ Nuevo Doctor</span>
+                        </button>
+                    </div>
                 )}
             </header>
 
@@ -258,6 +268,7 @@ const DoctorsPage = () => {
                 onSave={handleSave}
                 doctor={editingDoctor}
                 isAdmin={isAdmin}
+                mode={modalMode}
             />
         </div>
     );
