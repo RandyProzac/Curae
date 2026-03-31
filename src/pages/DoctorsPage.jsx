@@ -119,116 +119,134 @@ const DoctorsPage = () => {
         }
     };
 
-    const sortedDoctors = [...doctors]
+    const medicalStaff = [...doctors]
         .filter(doctor => doctor.active !== false && doctor.specialty !== 'ADMINISTRACION')
         .sort((a, b) => a.name.localeCompare(b.name));
+
+    const adminStaff = [...doctors]
+        .filter(doctor => doctor.active !== false && doctor.specialty === 'ADMINISTRACION')
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+    const renderDoctorTable = (staffList, title) => (
+        <div className={styles.tableSection}>
+            <h3 className={styles.sectionTitle}>{title}</h3>
+            <div className={styles.tableContainer}>
+                <table className={styles.table}>
+                    <thead>
+                        <tr>
+                            <th>{title === 'Cuerpo Médico' ? 'Doctor' : 'Administrador'}</th>
+                            <th>Cargo / Especialidad</th>
+                            <th>Métricas (Mes)</th>
+                            <th>Contacto</th>
+                            <th>Fecha Ingreso</th>
+                            <th style={{ textAlign: 'right' }}>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {staffList.map(doctor => (
+                            <tr key={doctor.id}>
+                                <td>
+                                    <div className={styles.doctorCell}>
+                                        <div
+                                            className={styles.avatarSmall}
+                                            style={{ backgroundColor: doctor.color || '#cbd5e1' }}
+                                        >
+                                            {doctor.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                        </div>
+                                        <div className={styles.nameInfo}>
+                                            <span className={styles.doctorName}>{doctor.name}</span>
+                                            {doctor.dni && <span className={styles.doctorDni}>DNI: {doctor.dni}</span>}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span className={styles.badge}>{doctor.specialty || 'General'}</span>
+                                </td>
+                                <td>
+                                    <div className={styles.statCell}>
+                                        <span style={{ fontSize: '1.2em' }}>{stats[doctor.id]?.patientsMonth || 0}</span>
+                                        <span style={{ fontSize: '0.8em', color: '#94a3b8', marginLeft: '4px' }}>Pacientes</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div className={styles.contactCell}>
+                                        {doctor.phone && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <Phone size={12} /> {doctor.phone}
+                                            </div>
+                                        )}
+                                        {doctor.email && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <Mail size={12} /> {doctor.email}
+                                            </div>
+                                        )}
+                                    </div>
+                                </td>
+                                <td style={{ color: '#64748b', fontSize: '0.9rem' }}>
+                                    {new Date(doctor.join_date || doctor.created_at).toLocaleDateString()}
+                                </td>
+                                <td>
+                                    <div className={styles.rowActions}>
+                                        {isAdmin && (
+                                            <>
+                                                <button
+                                                    className={styles.actionBtn}
+                                                    onClick={() => handleOpenEdit(doctor)}
+                                                    title="Editar"
+                                                >
+                                                    <Edit2 size={16} />
+                                                </button>
+                                                <button
+                                                    className={`${styles.actionBtn} ${styles.deleteKey}`}
+                                                    onClick={() => handleDelete(doctor.id)}
+                                                    title="Eliminar"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                        {staffList.length === 0 && (
+                            <tr>
+                                <td colSpan="6" style={{ textAlign: 'center', padding: '32px', color: '#94a3b8' }}>
+                                    No hay {title.toLowerCase()} registrados.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
 
     return (
         <div className={styles.container}>
             <header className={styles.header}>
                 <div className={styles.title}>
-                    <h2>Gestión de Doctores</h2>
-                    <p>Administra el personal médico, especialidades y horarios.</p>
+                    <h2>Gestión de Personal</h2>
+                    <p>Administra el cuerpo médico y el personal administrativo.</p>
                 </div>
                 {isAdmin && (
                     <button className={styles.addButton} onClick={handleOpenCreate}>
                         <UserPlus size={18} />
-                        <span>Nuevo Doctor</span>
+                        <span>Nuevo Personal</span>
                     </button>
                 )}
             </header>
 
-            <div className={styles.tableContainer}>
+            <div className={styles.content}>
                 {loading ? (
-                    <div style={{ padding: '32px', textAlign: 'center', color: '#64748b' }}>Cargando doctores...</div>
+                    <div style={{ padding: '32px', textAlign: 'center', color: '#64748b' }}>Cargando personal...</div>
                 ) : (
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th>Doctor</th>
-                                <th>Especialidad</th>
-                                <th>Métricas (Mes)</th>
-                                <th>Contacto</th>
-                                <th>Fecha Ingreso</th>
-                                <th style={{ textAlign: 'right' }}>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {sortedDoctors.map(doctor => (
-                                <tr key={doctor.id}>
-                                    <td>
-                                        <div className={styles.doctorCell}>
-                                            <div
-                                                className={styles.avatarSmall}
-                                                style={{ backgroundColor: doctor.color || '#cbd5e1' }}
-                                            >
-                                                {doctor.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                                            </div>
-                                            <div className={styles.nameInfo}>
-                                                <span className={styles.doctorName}>{doctor.name}</span>
-                                                {doctor.dni && <span className={styles.doctorDni}>DNI: {doctor.dni}</span>}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span className={styles.badge}>{doctor.specialty || 'General'}</span>
-                                    </td>
-                                    <td>
-                                        <div className={styles.statCell}>
-                                            <span style={{ fontSize: '1.2em' }}>{stats[doctor.id]?.patientsMonth || 0}</span>
-                                            <span style={{ fontSize: '0.8em', color: '#94a3b8', marginLeft: '4px' }}>Pacientes</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div className={styles.contactCell}>
-                                            {doctor.phone && (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                    <Phone size={12} /> {doctor.phone}
-                                                </div>
-                                            )}
-                                            {doctor.email && (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                    <Mail size={12} /> {doctor.email}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td style={{ color: '#64748b', fontSize: '0.9rem' }}>
-                                        {new Date(doctor.join_date || doctor.created_at).toLocaleDateString()}
-                                    </td>
-                                    <td>
-                                        <div className={styles.rowActions}>
-                                            {isAdmin && (
-                                                <>
-                                                    <button
-                                                        className={styles.actionBtn}
-                                                        onClick={() => handleOpenEdit(doctor)}
-                                                        title="Editar"
-                                                    >
-                                                        <Edit2 size={16} />
-                                                    </button>
-                                                    <button
-                                                        className={`${styles.actionBtn} ${styles.deleteKey}`}
-                                                        onClick={() => handleDelete(doctor.id)}
-                                                        title="Eliminar"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                </>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                            {sortedDoctors.length === 0 && (
-                                <tr>
-                                    <td colSpan="6" style={{ textAlign: 'center', padding: '32px', color: '#94a3b8' }}>
-                                        No hay doctores registrados.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                    <>
+                        {renderDoctorTable(medicalStaff, 'Cuerpo Médico')}
+                        <div style={{ marginTop: '48px' }}>
+                            {renderDoctorTable(adminStaff, 'Personal Administrativo')}
+                        </div>
+                    </>
                 )}
             </div>
 

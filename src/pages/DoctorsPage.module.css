@@ -172,6 +172,26 @@
     background: #fef2f2;
 }
 
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+}
+
+.tableSection {
+    margin-bottom: 0px;
+}
+
+.sectionTitle {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    padding-left: 8px;
+    border-left: 4px solid var(--primary-blue);
+    line-height: 1;
+}
+
 @media (max-width: 768px) {
     .tableContainer {
         overflow-x: auto;
