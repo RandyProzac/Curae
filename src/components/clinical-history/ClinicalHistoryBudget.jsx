@@ -44,12 +44,14 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
     const handlePrint = (budget, itemId = null) => {
         setPrintingBudget(budget);
         setPrintingItemId(itemId);
-        // Wait for state to apply and component to render before printing
-        // iPad/Safari requires a bit more time for portals to sync
         setTimeout(() => {
             window.print();
-            setPrintingBudget(null);
-            setPrintingItemId(null);
+            // Critical for iOS: We WAIT a few seconds before removing the portal
+            // because in mobile Safari/Chrome, print() is non-blocking
+            setTimeout(() => {
+                setPrintingBudget(null);
+                setPrintingItemId(null);
+            }, 5000); 
         }, 800);
     };
 

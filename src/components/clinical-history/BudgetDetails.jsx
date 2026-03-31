@@ -110,8 +110,13 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
         // Give the DOM enough time to load the Logo and Signature PNG before opening print preview
         setTimeout(() => {
             window.print();
-            setPrintingBudget(null);
-            setPrintingItemIds(null);
+            // Critical for iOS: We WAIT a few seconds before removing the portal
+            // because in mobile Safari/Chrome, print() is non-blocking and immediate removal
+            // results in blank pages.
+            setTimeout(() => {
+                setPrintingBudget(null);
+                setPrintingItemIds(null);
+            }, 6000);
         }, 1200);
     };
 
