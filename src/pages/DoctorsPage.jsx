@@ -119,9 +119,9 @@ const DoctorsPage = () => {
         }
     };
 
-    const sortedDoctors = [...doctors].sort((a, b) =>
-        a.name.localeCompare(b.name)
-    );
+    const sortedDoctors = [...doctors]
+        .filter(doctor => doctor.active !== false)
+        .sort((a, b) => a.name.localeCompare(b.name));
 
     return (
         <div className={styles.container}>
