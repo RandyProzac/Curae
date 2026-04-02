@@ -80,7 +80,14 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, isAdmin: user?.role === 'ADMIN' }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      logout, 
+      loading, 
+      isAdmin: user?.role === 'ADMIN',
+      canModifyPrices: user?.role === 'ADMIN' && ['diego@curae.com', 'luciana@curae.com', 'asistencia@curae.com'].includes(user?.email?.toLowerCase())
+    }}>
       {children}
     </AuthContext.Provider>
   );

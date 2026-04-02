@@ -175,7 +175,7 @@ const PatientBudgetModal = ({ isOpen, onClose, patient }) => {
                                                             onKeyDown={e => e.key === 'Enter' && e.target.blur()}
                                                         />
                                                     </div>
-
+                                                    
                                                     <div style={{ textAlign: 'center' }}>
                                                         {diffBadge}
                                                         {saving === service.id && <span style={{ fontSize: '12px', color: '#10b981', marginLeft: '8px' }}>Guardado</span>}

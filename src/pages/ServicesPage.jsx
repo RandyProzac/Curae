@@ -22,7 +22,7 @@ const CATEGORY_ICONS = {
 const CATEGORIES_LIST = Object.keys(CATEGORY_ICONS).filter(c => c !== 'Sin Categoría');
 
 const ServicesPage = () => {
-    const { isAdmin } = useAuth();
+    const { isAdmin, canModifyPrices } = useAuth();
     const [services, setServices] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -158,7 +158,7 @@ const ServicesPage = () => {
                     <h3>Catálogo de Servicios</h3>
                     <p>Gestiona precios, descripciones y categorías de tus tratamientos</p>
                 </div>
-                {isAdmin && (
+                {canModifyPrices && (
                     <button className={styles.addButton} onClick={handleOpenCreate}>
                         <Plus size={18} />
                         <span>Nuevo Servicio</span>
@@ -221,7 +221,7 @@ const ServicesPage = () => {
                                                 </td>
                                                 <td width="20%">
                                                     <div className={styles.actions}>
-                                                        {isAdmin && (
+                                                        {canModifyPrices && (
                                                             <>
                                                                 <button
                                                                     className={styles.actionBtn}
