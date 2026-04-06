@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Save, User, Phone, Mail, MapPin, AlertTriangle } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 import styles from './NewPatientModal.module.css';
 
 const NewPatientModal = ({ isOpen, onClose, onSave }) => {
@@ -21,8 +22,20 @@ const NewPatientModal = ({ isOpen, onClose, onSave }) => {
 
     React.useEffect(() => {
         const fetchDoctors = async () => {
-            const { data } = await supabase.from('doctors').select('id, name').eq('active', true);
-            setDoctors(data || []);
+            try {
+                const { data, error } = await supabase.from('doctors').select('id, name, specialty, active').order('name');
+                if (error) throw error;
+                
+                // Filter similarly to AppointmentsPage: active and not ADMINISTRATION
+                const filtered = (data || []).filter(d => 
+                    d.active !== false && 
+                    d.specialty !== 'ADMINISTRACION'
+                );
+                
+                setDoctors(filtered);
+            } catch (err) {
+                console.error('Error fetching doctors:', err);
+            }
         };
         if (isOpen) fetchDoctors();
     }, [isOpen]);
