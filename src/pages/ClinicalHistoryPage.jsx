@@ -153,6 +153,13 @@ export default function ClinicalHistoryPage() {
                         email: patient.email || '',
                         fechaNacimiento: patient.date_of_birth || '',
                         direccion: patient.address || '',
+                        sexo: patient.gender || '',
+                        distrito: patient.district || '',
+                        ciudad: patient.city || '',
+                        estadoCivil: patient.marital_status || '',
+                        ocupacion: patient.occupation || '',
+                        lugarTrabajo: patient.work_place || '',
+                        nombreApoderado: patient.guardian_name || '',
                     }
 
                     if (history && !histError) {
@@ -168,6 +175,8 @@ export default function ClinicalHistoryPage() {
                             newFormData.lugarTrabajo = history.antecedentes.lugarTrabajo || newFormData.lugarTrabajo
                             newFormData.estadoCivil = history.antecedentes.estadoCivil || newFormData.estadoCivil
                             newFormData.nombreApoderado = history.antecedentes.nombreApoderado || newFormData.nombreApoderado
+                            newFormData.distrito = history.antecedentes.distrito || newFormData.distrito
+                            newFormData.ciudad = history.antecedentes.ciudad || newFormData.ciudad
                         }
                     } else {
                         newFormData.numeroHistoria = `HC-${new Date().getFullYear()}-${patientId.slice(0, 4).toUpperCase()}`
@@ -228,6 +237,12 @@ export default function ClinicalHistoryPage() {
                 address: formData.direccion,
                 date_of_birth: birthDate || null,
                 gender: formData.sexo,
+                district: formData.distrito,
+                city: formData.ciudad,
+                marital_status: formData.estadoCivil,
+                occupation: formData.ocupacion,
+                work_place: formData.lugarTrabajo,
+                guardian_name: formData.nombreApoderado
             }).eq('id', patientId);
 
             // 2. Upsert Clinical History Record (Antecedents, etc)
@@ -242,7 +257,9 @@ export default function ClinicalHistoryPage() {
                     ocupacion: formData.ocupacion,
                     lugarTrabajo: formData.lugarTrabajo,
                     estadoCivil: formData.estadoCivil,
-                    nombreApoderado: formData.nombreApoderado
+                    nombreApoderado: formData.nombreApoderado,
+                    distrito: formData.distrito,
+                    ciudad: formData.ciudad
                 },
                 updated_at: new Date().toISOString()
             }
