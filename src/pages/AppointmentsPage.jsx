@@ -1102,7 +1102,7 @@ const AppointmentsPage = () => {
                 </div>
             ) : viewMode === 'day' ? (
                 /* REFURBISHED DAY VIEW (Strip + List) */
-                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, background: '#f8fafc', padding: '24px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, background: '#f8fafc', padding: '24px', overflowY: 'auto' }}>
 
                     {/* 1. Date Strip */}
                     <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '32px' }}>
