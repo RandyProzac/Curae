@@ -82,6 +82,8 @@ export default function IntegrationsPage() {
         },
         flow: 'auth-code',
         scope: "https://www.googleapis.com/auth/calendar email profile",
+        access_type: 'offline',
+        prompt: 'consent',
     });
 
     const handleGoogleConnect = () => {
