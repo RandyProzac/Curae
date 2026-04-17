@@ -14,6 +14,7 @@ const CATEGORY_ICONS = {
     'Rehabilitación Oral': '👑',
     'Implantología': '🔩',
     'Ortodoncia': '😬',
+    'Ortopedia': '🦴',
     'Estética Dental': '💎',
     'Odontopediatría': '🧸',
     'Sin Categoría': '📦'
