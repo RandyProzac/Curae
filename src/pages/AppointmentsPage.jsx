@@ -671,10 +671,9 @@ const AppointmentsPage = () => {
 
                     if (existingPat) {
                         finalPatientId = existingPat.id;
-                        // Inform user or just proceed with found ID
                         console.log("Patient already exists with this DNI, using existing record.");
                     } else {
-                        // Create new patient
+                        // Create new patient — include doctor_id from the appointment
                         const { data: newPat, error: patError } = await supabase
                             .from('patients')
                             .insert([{
@@ -684,7 +683,8 @@ const AppointmentsPage = () => {
                                 date_of_birth: '2000-01-01',
                                 address: newAppointment.newPatientAddress || null,
                                 email: newAppointment.newPatientEmail || null,
-                                dni: newAppointment.newPatientDni || null
+                                dni: newAppointment.newPatientDni || null,
+                                doctor_id: newAppointment.doctorId || null
                             }])
                             .select()
                             .single();
@@ -693,7 +693,7 @@ const AppointmentsPage = () => {
                         setPatientsData(prev => [...prev, newPat]);
                     }
                 } else {
-                    // Patient without DNI (less common but possible)
+                    // Patient without DNI — include doctor_id from the appointment
                     const { data: newPat, error: patError } = await supabase
                         .from('patients')
                         .insert([{
@@ -703,7 +703,8 @@ const AppointmentsPage = () => {
                             date_of_birth: '2000-01-01',
                             address: newAppointment.newPatientAddress || null,
                             email: newAppointment.newPatientEmail || null,
-                            dni: null
+                            dni: null,
+                            doctor_id: newAppointment.doctorId || null
                         }])
                         .select()
                         .single();
@@ -747,6 +748,21 @@ const AppointmentsPage = () => {
                 if (error) throw error;
                 savedData = data;
                 showAlert('Cita guardada correctamente', 'Éxito', 'alert');
+            }
+
+            // --- AUTO-ASSIGN DOCTOR TO PATIENT if not yet assigned ---
+            // If the appointment has a doctor and the patient has no doctor_id, update it silently
+            if (newAppointment.doctorId && finalPatientId && savedData?.patient) {
+                if (!savedData.patient.doctor_id) {
+                    supabase
+                        .from('patients')
+                        .update({ doctor_id: newAppointment.doctorId })
+                        .eq('id', finalPatientId)
+                        .then(({ error }) => {
+                            if (error) console.warn('Could not auto-assign doctor to patient:', error);
+                            else console.log(`Auto-assigned doctor ${newAppointment.doctorId} to patient ${finalPatientId}`);
+                        });
+                }
             }
 
             // --- GOOGLE CALENDAR SYNC (Background) ---
