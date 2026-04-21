@@ -1916,9 +1916,16 @@ const AppointmentsPage = () => {
                                             {/* Consultorio */}
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                                 <label style={{ fontSize: '14px', color: '#64748b' }}>Consultorio ⓘ</label>
-                                                <select style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', color: '#334155' }}>
-                                                    <option>Consultorio 1</option>
-                                                    <option>Consultorio 2</option>
+                                                <select
+                                                    value={newAppointment.consultorio}
+                                                    onChange={e => setNewAppointment(prev => ({ ...prev, consultorio: e.target.value }))}
+                                                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', color: '#334155' }}>
+                                                    <option value="">— Seleccionar —</option>
+                                                    <option value="Consultorio 1">Consultorio 1</option>
+                                                    <option value="Consultorio 2">Consultorio 2</option>
+                                                    <option value="Consultorio 3">Consultorio 3</option>
+                                                    <option value="Consultorio 4">Consultorio 4</option>
+                                                    <option value="Consultorio 5">Consultorio 5</option>
                                                 </select>
                                             </div>
 
