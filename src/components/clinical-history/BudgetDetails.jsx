@@ -307,6 +307,7 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                                 </th>
                                 <th style={S.th}>Item</th>
                                 <th style={S.th}>Nota</th>
+                                <th style={{ ...S.th, color: '#0f766e' }}>P. Unit.</th>
                                 <th style={S.th}>Dscto.</th>
                                 <th style={S.th}>Cant.</th>
                                 <th style={S.th}>Subtotal</th>
@@ -340,6 +341,9 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                                         </td>
                                         <td style={{ ...S.td, fontWeight: '600' }}>{item.service_name}</td>
                                         <td style={{ ...S.td, color: '#64748b', fontSize: '12px' }}>{item.tooth_number || '-'}</td>
+                                        <td style={{ ...S.td, fontWeight: '600', color: '#0f766e', whiteSpace: 'nowrap' }}>
+                                            S/ {parseFloat(item.unit_price).toFixed(2)}
+                                        </td>
                                         <td style={{ ...S.td, fontSize: '12px', whiteSpace: 'nowrap', minWidth: '120px' }}>
                                             {editingDiscount === item.id ? (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>

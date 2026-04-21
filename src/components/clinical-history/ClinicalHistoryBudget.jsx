@@ -330,6 +330,7 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
                                                     <th style={S.th}>Nota</th>
                                                     <th style={S.th}>Dscto.</th>
                                                     <th style={S.th}>Cant.</th>
+                                                    <th style={{ ...S.th, color: '#0f766e' }}>P. Unit.</th>
                                                     <th style={S.th}>Subtotal</th>
                                                     <th style={S.th}>Pagado</th>
                                                     <th style={S.th}>Por pagar</th>
@@ -354,6 +355,9 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
                                                                 {itemDiscount > 0 ? `- S/ ${itemDiscount.toFixed(2)}` : '-'}
                                                             </td>
                                                             <td style={S.td}>{item.quantity}</td>
+                                                            <td style={{ ...S.td, fontWeight: '600', color: '#0f766e' }}>
+                                                                S/ {parseFloat(item.unit_price).toFixed(2)}
+                                                            </td>
                                                             <td style={{ ...S.td, fontWeight: '600' }}>S/ {rawPrice.toFixed(2)}</td>
                                                             <td style={{ ...S.td, color: paid > 0 ? '#059669' : '#94a3b8' }}>
                                                                 {paid > 0 ? `S/ ${paid.toFixed(2)}` : '-'}
