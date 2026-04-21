@@ -26,6 +26,12 @@ const PatientDetailSidebar = ({ patient, isOpen, onClose }) => {
     const [expandedBudgets, setExpandedBudgets] = useState({});
     const [loading, setLoading] = useState(true);
 
+    // Edit filiacion
+    const [editingFiliacion, setEditingFiliacion] = useState(false);
+    const [editForm, setEditForm] = useState({});
+    const [doctorsList, setDoctorsList] = useState([]);
+    const [savingFiliacion, setSavingFiliacion] = useState(false);
+
     // New budget form
     const [showNewBudget, setShowNewBudget] = useState(false);
     const [newBudgetTitle, setNewBudgetTitle] = useState('');
@@ -284,6 +290,54 @@ const PatientDetailSidebar = ({ patient, isOpen, onClose }) => {
         setExpandedBudgets(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
+    // ===== FILIACION EDIT =====
+    const handleOpenEdit = async () => {
+        if (doctorsList.length === 0) {
+            const { data } = await supabase
+                .from('doctors')
+                .select('id, name, color')
+                .neq('specialty', 'ADMINISTRACION')
+                .order('name');
+            setDoctorsList(data || []);
+        }
+        setEditForm({
+            first_name: patientDetail?.first_name || '',
+            last_name:  patientDetail?.last_name  || '',
+            dni:        patientDetail?.dni         || '',
+            phone:      patientDetail?.phone       || '',
+            email:      patientDetail?.email       || '',
+            address:    patientDetail?.address     || '',
+            doctor_id:  patientDetail?.doctor_id   || '',
+        });
+        setEditingFiliacion(true);
+    };
+
+    const handleSaveFiliacion = async () => {
+        setSavingFiliacion(true);
+        try {
+            const { error } = await supabase
+                .from('patients')
+                .update({
+                    first_name: editForm.first_name,
+                    last_name:  editForm.last_name,
+                    dni:        editForm.dni        || null,
+                    phone:      editForm.phone      || null,
+                    email:      editForm.email      || null,
+                    address:    editForm.address    || null,
+                    doctor_id:  editForm.doctor_id  || null,
+                })
+                .eq('id', patient.id);
+            if (error) throw error;
+            setEditingFiliacion(false);
+            await loadPatientData(); // refresh
+        } catch (err) {
+            console.error('Error saving patient:', err);
+            alert('Error al guardar: ' + err.message);
+        } finally {
+            setSavingFiliacion(false);
+        }
+    };
+
     if (!isOpen) return null;
 
     const fullName = patient ? `${patient.firstName || patient.first_name || ''} ${patient.lastName || patient.last_name || ''}`.trim() : '';
@@ -384,48 +438,124 @@ const PatientDetailSidebar = ({ patient, isOpen, onClose }) => {
                     ) : activeTab === 'filiacion' ? (
                         /* ===== FILIACION TAB ===== */
                         <div className={styles.filiacionGrid}>
-                            <div className={styles.fieldGroup}>
-                                <span className={styles.fieldLabel}>Nombres</span>
-                                <span className={styles.fieldValue}>{patientDetail?.first_name || '-'}</span>
-                            </div>
-                            <div className={styles.fieldGroup}>
-                                <span className={styles.fieldLabel}>Apellidos</span>
-                                <span className={styles.fieldValue}>{patientDetail?.last_name || '-'}</span>
-                            </div>
-                            <div className={styles.fieldGroup}>
-                                <span className={styles.fieldLabel}>DNI</span>
-                                <span className={styles.fieldValue}>{patientDetail?.dni || '-'}</span>
-                            </div>
-                            <div className={styles.fieldGroup}>
-                                <span className={styles.fieldLabel}>Teléfono</span>
-                                <span className={styles.fieldValue}>{patientDetail?.phone || '-'}</span>
-                            </div>
-                            <div className={styles.fieldGroup}>
-                                <span className={styles.fieldLabel}>Email</span>
-                                <span className={styles.fieldValue}>{patientDetail?.email || '-'}</span>
-                            </div>
-                            <div className={styles.fieldGroup}>
-                                <span className={styles.fieldLabel}>Fecha de Nacimiento</span>
-                                <span className={styles.fieldValue}>
-                                    {patientDetail?.date_of_birth
-                                        ? `${new Date(patientDetail.date_of_birth + 'T00:00:00').toLocaleDateString('es-PE')} (${Math.floor((new Date() - new Date(patientDetail.date_of_birth + 'T00:00:00')) / (365.25 * 24 * 60 * 60 * 1000))} años)`
-                                        : '-'}
-                                </span>
-                            </div>
-                            <div className={styles.fieldGroup}>
-                                <span className={styles.fieldLabel}>Doctor Responsable</span>
-                                <span className={styles.fieldValue} style={{ color: patientDetail?.doctor?.color || '#0f766e', fontWeight: 'bold' }}>
-                                    {patientDetail?.doctor?.name || 'No asignado'}
-                                </span>
-                            </div>
-                            <div className={styles.fieldGroup} style={{ gridColumn: '1 / -1' }}>
-                                <span className={styles.fieldLabel}>Dirección</span>
-                                <span className={styles.fieldValue}>{patientDetail?.address || '-'}</span>
-                            </div>
-                            <div className={styles.fieldGroup} style={{ gridColumn: '1 / -1' }}>
-                                <span className={styles.fieldLabel}>Notas</span>
-                                <span className={styles.fieldValue}>{patientDetail?.notes || 'Sin notas'}</span>
-                            </div>
+
+                            {editingFiliacion ? (
+                                /* EDIT MODE */
+                                <>
+                                    {[
+                                        { label: 'Nombres',   key: 'first_name' },
+                                        { label: 'Apellidos', key: 'last_name'  },
+                                        { label: 'DNI',       key: 'dni'        },
+                                        { label: 'Teléfono',  key: 'phone'      },
+                                        { label: 'Email',     key: 'email'      },
+                                        { label: 'Dirección', key: 'address'    },
+                                    ].map(({ label, key }) => (
+                                        <div key={key} className={styles.fieldGroup}
+                                            style={key === 'address' ? { gridColumn: '1 / -1' } : {}}>
+                                            <span className={styles.fieldLabel}>{label}</span>
+                                            <input
+                                                value={editForm[key]}
+                                                onChange={e => setEditForm(p => ({ ...p, [key]: e.target.value }))}
+                                                style={{ width: '100%', padding: '6px 10px', border: '1px solid #e2e8f0',
+                                                    borderRadius: '8px', fontSize: '13px', color: '#1e293b', outline: 'none' }}
+                                            />
+                                        </div>
+                                    ))}
+
+                                    {/* Doctor Responsable dropdown */}
+                                    <div className={styles.fieldGroup} style={{ gridColumn: '1 / -1' }}>
+                                        <span className={styles.fieldLabel}>Doctor Responsable</span>
+                                        <select
+                                            value={editForm.doctor_id}
+                                            onChange={e => setEditForm(p => ({ ...p, doctor_id: e.target.value }))}
+                                            style={{ width: '100%', padding: '8px 10px', border: '1px solid #e2e8f0',
+                                                borderRadius: '8px', fontSize: '13px', color: '#1e293b',
+                                                background: 'white', outline: 'none' }}
+                                        >
+                                            <option value="">— Sin asignar —</option>
+                                            {doctorsList.map(d => (
+                                                <option key={d.id} value={d.id}>{d.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                                        <button
+                                            onClick={() => setEditingFiliacion(false)}
+                                            style={{ padding: '8px 16px', border: '1px solid #e2e8f0', borderRadius: '8px',
+                                                background: 'white', color: '#64748b', cursor: 'pointer', fontSize: '13px' }}
+                                        >Cancelar</button>
+                                        <button
+                                            onClick={handleSaveFiliacion}
+                                            disabled={savingFiliacion}
+                                            style={{ padding: '8px 20px', border: 'none', borderRadius: '8px',
+                                                background: '#0f766e', color: 'white', cursor: 'pointer',
+                                                fontSize: '13px', fontWeight: '600',
+                                                opacity: savingFiliacion ? 0.7 : 1 }}
+                                        >{savingFiliacion ? 'Guardando...' : 'Guardar'}</button>
+                                    </div>
+                                </>
+                            ) : (
+                                /* READ MODE */
+                                <>
+                                    <div className={styles.fieldGroup}>
+                                        <span className={styles.fieldLabel}>Nombres</span>
+                                        <span className={styles.fieldValue}>{patientDetail?.first_name || '-'}</span>
+                                    </div>
+                                    <div className={styles.fieldGroup}>
+                                        <span className={styles.fieldLabel}>Apellidos</span>
+                                        <span className={styles.fieldValue}>{patientDetail?.last_name || '-'}</span>
+                                    </div>
+                                    <div className={styles.fieldGroup}>
+                                        <span className={styles.fieldLabel}>DNI</span>
+                                        <span className={styles.fieldValue}>{patientDetail?.dni || '-'}</span>
+                                    </div>
+                                    <div className={styles.fieldGroup}>
+                                        <span className={styles.fieldLabel}>Teléfono</span>
+                                        <span className={styles.fieldValue}>{patientDetail?.phone || '-'}</span>
+                                    </div>
+                                    <div className={styles.fieldGroup}>
+                                        <span className={styles.fieldLabel}>Email</span>
+                                        <span className={styles.fieldValue}>{patientDetail?.email || '-'}</span>
+                                    </div>
+                                    <div className={styles.fieldGroup}>
+                                        <span className={styles.fieldLabel}>Fecha de Nacimiento</span>
+                                        <span className={styles.fieldValue}>
+                                            {patientDetail?.date_of_birth
+                                                ? `${new Date(patientDetail.date_of_birth + 'T00:00:00').toLocaleDateString('es-PE')} (${Math.floor((new Date() - new Date(patientDetail.date_of_birth + 'T00:00:00')) / (365.25 * 24 * 60 * 60 * 1000))} años)`
+                                                : '-'}
+                                        </span>
+                                    </div>
+                                    <div className={styles.fieldGroup}>
+                                        <span className={styles.fieldLabel}>Doctor Responsable</span>
+                                        <span className={styles.fieldValue} style={{ color: patientDetail?.doctor?.color || '#0f766e', fontWeight: 'bold' }}>
+                                            {patientDetail?.doctor?.name || 'No asignado'}
+                                        </span>
+                                    </div>
+                                    <div className={styles.fieldGroup} style={{ gridColumn: '1 / -1' }}>
+                                        <span className={styles.fieldLabel}>Dirección</span>
+                                        <span className={styles.fieldValue}>{patientDetail?.address || '-'}</span>
+                                    </div>
+                                    <div className={styles.fieldGroup} style={{ gridColumn: '1 / -1' }}>
+                                        <span className={styles.fieldLabel}>Notas</span>
+                                        <span className={styles.fieldValue}>{patientDetail?.notes || 'Sin notas'}</span>
+                                    </div>
+
+                                    {/* Edit button */}
+                                    <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+                                        <button
+                                            onClick={handleOpenEdit}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '6px',
+                                                padding: '8px 16px', border: '1px solid #e2e8f0', borderRadius: '8px',
+                                                background: 'white', color: '#0f766e', cursor: 'pointer',
+                                                fontSize: '13px', fontWeight: '600' }}
+                                        >
+                                            <Pencil size={14} /> Editar datos
+                                        </button>
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                     ) : (
