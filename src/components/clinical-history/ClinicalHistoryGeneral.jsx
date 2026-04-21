@@ -142,6 +142,8 @@ const ClinicalHistoryGeneral = ({ formData, updateField, updateAntecedente, onSa
                                 <option value="casado">Casado/a</option>
                                 <option value="divorciado">Divorciado/a</option>
                                 <option value="viudo">Viudo/a</option>
+                                <option value="conviviente">Conviviente</option>
+                                <option value="otros">Otros</option>
                             </select>
                         </div>
                         <div className={`${styles.formGroup} ${styles.wide}`}>
