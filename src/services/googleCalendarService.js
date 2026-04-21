@@ -153,13 +153,25 @@ export const getValidGoogleToken = async () => {
 export const getOrCreateDoctorCalendar = async (doctor, token) => {
     if (!token || !doctor) return null;
 
-    // Fast path: Already exists in DB
+    // If we have a stored calendar ID, VERIFY it still exists in the current account
     if (doctor.google_calendar_id) {
-        return doctor.google_calendar_id;
+        const verifyRes = await fetch(
+            `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(doctor.google_calendar_id)}`,
+            { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+
+        if (verifyRes.ok) {
+            return doctor.google_calendar_id; // Still valid ✅
+        }
+
+        // Stale ID (404 or other error) → clear it and recreate below
+        console.warn(`Stale google_calendar_id for ${doctor.name}, clearing and recreating...`);
+        await supabase.from('doctors').update({ google_calendar_id: null }).eq('id', doctor.id);
+        doctor = { ...doctor, google_calendar_id: null };
     }
 
     try {
-        // 1. Check if it already exists in Google for this account (to avoid duplicates)
+        // 1. Check if a calendar with the same name already exists in this Google account
         const listResponse = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -172,13 +184,12 @@ export const getOrCreateDoctorCalendar = async (doctor, token) => {
             );
 
             if (existing) {
-                // Update Supabase with the found ID
                 await supabase.from('doctors').update({ google_calendar_id: existing.id }).eq('id', doctor.id);
                 return existing.id;
             }
         }
 
-        // 2. If not found, create new calendar
+        // 2. Create new sub-calendar
         const response = await fetch('https://www.googleapis.com/calendar/v3/calendars', {
             method: 'POST',
             headers: {
@@ -198,16 +209,12 @@ export const getOrCreateDoctorCalendar = async (doctor, token) => {
         const data = await response.json();
         const newCalendarId = data.id;
 
-        // Save back to Supabase
-        await supabase
-            .from('doctors')
-            .update({ google_calendar_id: newCalendarId })
-            .eq('id', doctor.id);
+        await supabase.from('doctors').update({ google_calendar_id: newCalendarId }).eq('id', doctor.id);
 
         return newCalendarId;
     } catch (e) {
         console.error("Error creating doctor calendar", e);
-        return null; // Fallback to primary if failed? Best to return null so we don't mess up primary.
+        return null;
     }
 };
 
@@ -276,12 +283,17 @@ export const fetchExternalEvents = async (doctor, token, timeMin, timeMax) => {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
+        // 404 = stale calendar ID from a previous Google account → clear it
+        if (res.status === 404) {
+            console.warn(`Calendar 404 for ${doctor.name} — clearing stale google_calendar_id`);
+            await supabase.from('doctors').update({ google_calendar_id: null }).eq('id', doctor.id);
+            return [];
+        }
+
         if (!res.ok) throw new Error('Failed to fetch events');
 
         const data = await res.json();
 
-        // Filter out events that were created by Curae to avoid duplicates
-        // We know Curae events have 'Id Curae:' in their description.
         const externalEvents = (data.items || []).filter(item => {
             const desc = item.description || '';
             return !desc.includes('Id Curae:');
@@ -299,9 +311,9 @@ export const fetchExternalEvents = async (doctor, token, timeMin, timeMax) => {
                 title: item.summary || 'Cita Google Calendar',
                 date: start.split('T')[0],
                 startTime: start.includes('T') ? start.split('T')[1].substring(0, 5) : '00:00',
-                duration: (endDate - startDate) / 60000, // minutes
+                duration: (endDate - startDate) / 60000,
                 doctorId: doctor.id,
-                color: '#94a3b8', // Slate grey for external events
+                color: '#94a3b8',
                 notes: 'Importado de Google Calendar',
                 type: 'event'
             };
