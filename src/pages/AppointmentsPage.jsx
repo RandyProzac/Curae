@@ -273,6 +273,14 @@ const AppointmentsPage = () => {
         return (h2 * 60 + m2) - (h1 * 60 + m1);
     };
 
+    // Returns YYYY-MM-DD in LOCAL time (avoids UTC offset bug with toISOString)
+    const toLocalDateStr = (date) => {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    };
+
     const calculateEndTime = (startTime, duration) => {
         if (!startTime) return '';
         const [h, m] = startTime.split(':').map(Number);
@@ -346,7 +354,7 @@ const AppointmentsPage = () => {
 
     // Unified Getter
     const getItemsForDate = (date) => {
-        const dateStr = date.toISOString().split('T')[0];
+        const dateStr = toLocalDateStr(date);
 
         const apts = appointments.filter(a =>
             a.date === dateStr &&
@@ -901,8 +909,8 @@ const AppointmentsPage = () => {
         const initial = (overrides && overrides.nativeEvent) ? {} : overrides;
 
         // Block past dates
-        const today = new Date().toISOString().split('T')[0];
-        const targetDate = initial.date || currentDate.toISOString().split('T')[0];
+        const today = toLocalDateStr(new Date());
+        const targetDate = initial.date || toLocalDateStr(currentDate);
         if (targetDate < today) {
             showAlert('No se pueden crear citas en fechas pasadas.', '⚠️ Fecha pasada', 'alert');
             return;
@@ -914,7 +922,7 @@ const AppointmentsPage = () => {
             doctorId: '',
             serviceId: '',
             motivo: '',
-            date: currentDate.toISOString().split('T')[0],
+            date: toLocalDateStr(currentDate),
             startTime: '09:00',
             endTime: '09:30',
             consultorio: '',
@@ -939,7 +947,7 @@ const AppointmentsPage = () => {
             endTime: '08:30',
             frequency: 'No se repite',
             notes: '',
-            date: currentDate.toISOString().split('T')[0],
+            date: toLocalDateStr(currentDate),
             ...initial
         });
 
@@ -1107,7 +1115,9 @@ const AppointmentsPage = () => {
                     {/* 1. Date Strip */}
                     <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '32px' }}>
                         {weekDates.map((date, i) => {
-                            const isSelected = date.getDate() === currentDate.getDate();
+                            const isSelected = date.getFullYear() === currentDate.getFullYear() &&
+                                date.getMonth() === currentDate.getMonth() &&
+                                date.getDate() === currentDate.getDate();
                             return (
                                 <button key={i}
                                     onClick={() => setCurrentDate(date)}
@@ -1244,7 +1254,7 @@ const AppointmentsPage = () => {
                                             className="hover:bg-slate-50"
                                             onClick={() => {
                                                 handleOpenNewAppointment({
-                                                    date: date.toISOString().split('T')[0],
+                                                    date: toLocalDateStr(date),
                                                     startTime: `${hour.toString().padStart(2, '0')}:00`,
                                                     endTime: `${hour.toString().padStart(2, '0')}:30`
                                                 });
@@ -1256,7 +1266,7 @@ const AppointmentsPage = () => {
                                             className="hover:bg-slate-100"
                                             onClick={() => {
                                                 handleOpenNewAppointment({
-                                                    date: date.toISOString().split('T')[0],
+                                                    date: toLocalDateStr(date),
                                                     startTime: `${hour.toString().padStart(2, '0')}:30`,
                                                     endTime: `${(hour + 1).toString().padStart(2, '0')}:00`
                                                 });
