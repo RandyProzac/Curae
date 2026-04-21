@@ -1,6 +1,44 @@
 import { DateTime } from 'luxon';
 import { supabase } from '../lib/supabase';
 
+/**
+ * Maps any hex color to the closest Google Calendar colorId (1-11).
+ * Google palette: Tomato, Flamingo, Tangerine, Banana, Sage, Basil, Peacock, Blueberry, Lavender, Grape, Graphite
+ */
+const hexToGoogleColorId = (hex) => {
+    const GOOGLE_COLORS = [
+        { id: '1',  rgb: [213,   0,   0] }, // Tomato
+        { id: '2',  rgb: [230, 124, 115] }, // Flamingo
+        { id: '3',  rgb: [244,  81,  30] }, // Tangerine
+        { id: '4',  rgb: [246, 191,  38] }, // Banana
+        { id: '5',  rgb: [ 51, 182, 121] }, // Sage
+        { id: '6',  rgb: [ 11, 128,  67] }, // Basil
+        { id: '7',  rgb: [  3, 155, 229] }, // Peacock
+        { id: '8',  rgb: [ 63,  81, 181] }, // Blueberry
+        { id: '9',  rgb: [121, 134, 203] }, // Lavender
+        { id: '10', rgb: [142,  36, 170] }, // Grape
+        { id: '11', rgb: [ 97,  97,  97] }, // Graphite
+    ];
+
+    if (!hex) return '1';
+    const clean = hex.replace('#', '');
+    const r = parseInt(clean.substring(0, 2), 16);
+    const g = parseInt(clean.substring(2, 4), 16);
+    const b = parseInt(clean.substring(4, 6), 16);
+
+    let best = GOOGLE_COLORS[0];
+    let bestDist = Infinity;
+    for (const c of GOOGLE_COLORS) {
+        const dist = Math.sqrt(
+            Math.pow(r - c.rgb[0], 2) +
+            Math.pow(g - c.rgb[1], 2) +
+            Math.pow(b - c.rgb[2], 2)
+        );
+        if (dist < bestDist) { bestDist = dist; best = c; }
+    }
+    return best.id;
+};
+
 // Helper to exchange Authorization Code for Access and Refresh Tokens
 export const exchangeGoogleCodeForTokens = async (authCode) => {
     try {
@@ -189,7 +227,8 @@ export const getOrCreateDoctorCalendar = async (doctor, token) => {
             }
         }
 
-        // 2. Create new sub-calendar
+        // 2. Create new sub-calendar with the doctor's nearest Google color
+        const colorId = hexToGoogleColorId(doctor.color);
         const response = await fetch('https://www.googleapis.com/calendar/v3/calendars', {
             method: 'POST',
             headers: {
@@ -208,6 +247,13 @@ export const getOrCreateDoctorCalendar = async (doctor, token) => {
 
         const data = await response.json();
         const newCalendarId = data.id;
+
+        // Apply the color via calendarList PATCH (color must be set on the calendarList entry)
+        await fetch(`https://www.googleapis.com/calendar/v3/users/me/calendarList/${encodeURIComponent(newCalendarId)}`, {
+            method: 'PATCH',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ colorId })
+        });
 
         await supabase.from('doctors').update({ google_calendar_id: newCalendarId }).eq('id', doctor.id);
 

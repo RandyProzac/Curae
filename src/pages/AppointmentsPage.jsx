@@ -756,9 +756,14 @@ const AppointmentsPage = () => {
                 const doctorToSync = doctorsData.find(d => d.id === newAppointment.doctorId) || null;
 
                 // We don't block the UI, handle it asynchronously
+                // Use savedData.patient (joined from Supabase) as the authoritative patient name
+                const gcalPatientName = savedData.patient
+                    ? `${savedData.patient.first_name} ${savedData.patient.last_name}`.trim()
+                    : (`${newAppointment.newPatientName || ''} ${newAppointment.newPatientLastName || ''}`).trim() || 'Sin paciente';
+
                 createGoogleCalendarEvent({
                     id: savedData.id,
-                    patient_name: newAppointment.newPatientName || selectedAppointment?.patient || 'Paciente',
+                    patient_name: gcalPatientName,
                     date: savedData.date,
                     start_time: savedData.start_time,
                     end_time: savedData.end_time,
