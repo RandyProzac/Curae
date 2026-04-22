@@ -119,12 +119,30 @@ export default function TreatmentPlans({ patientId, patientName, patientPhone, o
     const handleDeletePlan = async () => {
         if (!deleteModal.planId) return;
         try {
-            const { error } = await supabase
+            // 1. Get the plan to check if it has an associated budget
+            const { data: plan } = await supabase
+                .from('treatment_plans')
+                .select('budget_id')
+                .eq('id', deleteModal.planId)
+                .single();
+
+            // 2. Delete the treatment plan (this will always happen)
+            const { error: planError } = await supabase
                 .from('treatment_plans')
                 .delete()
                 .eq('id', deleteModal.planId);
 
-            if (error) throw error;
+            if (planError) throw planError;
+
+            // 3. If there was a budget_id, delete that budget too
+            // Note: Our DB has ON DELETE CASCADE from budgets -> items -> payments
+            // so deleting the budget record will clean up everything financial.
+            if (plan && plan.budget_id) {
+                await supabase
+                    .from('budgets')
+                    .delete()
+                    .eq('id', plan.budget_id);
+            }
 
             // Also close details if deleted plan was open
             if (expandedPlanId === deleteModal.planId) setExpandedPlanId(null);

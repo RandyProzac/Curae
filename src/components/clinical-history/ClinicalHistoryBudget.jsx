@@ -11,7 +11,7 @@ import {
     X,
     Stethoscope,
 } from 'lucide-react';
-import { budgetsApi, paymentsApi, supabase } from '../../lib/supabase';
+import { budgetsApi, paymentsApi, supabase, doctorsApi } from '../../lib/supabase';
 import AuthContext from '../../contexts/AuthContext';
 import ServiceSelector from '../appointments/ServiceSelector';
 import PrintableBudget from '../common/PrintableBudget';
@@ -34,8 +34,22 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
     const [paymentAmount, setPaymentAmount] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('VISA');
     const [paymentNotes, setPaymentNotes] = useState('');
+    const [paymentDoctorId, setPaymentDoctorId] = useState('');
+    const [doctorsList, setDoctorsList] = useState([]);
     const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null });
     const [isPaying, setIsPaying] = useState(false);
+
+    useEffect(() => {
+        const loadDoctors = async () => {
+            try {
+                const docs = await doctorsApi.getAll();
+                setDoctorsList(docs.filter(d => d.active !== false));
+            } catch (err) {
+                console.error('Error fetching doctors for payment modal', err);
+            }
+        };
+        loadDoctors();
+    }, []);
 
     // Print state
     const [printingBudget, setPrintingBudget] = useState(null);
@@ -212,6 +226,7 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
                 budget_item_id: item.id,
                 amount,
                 method: paymentMethod,
+                doctor_id: paymentDoctorId || null,
                 notes: paymentNotes || null,
                 date: new Date().toLocaleDateString('en-CA'),
             });
@@ -373,6 +388,7 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
                                                                             onClick={() => {
                                                                                 setPaymentModal({ open: true, item });
                                                                                 setPaymentAmount(remaining.toFixed(2));
+                                                                                setPaymentDoctorId(item.doctor_id || user?.id || '');
                                                                             }}
                                                                         >Pagar</button>
                                                                     ) : (
@@ -541,6 +557,22 @@ export default function ClinicalHistoryBudget({ patientId, patientName, patientP
                                     <option value="BBVA">BBVA</option>
                                     <option value="INTERBANK">INTERBANK</option>
                                     <option value="EFECTIVO">EFECTIVO</option>
+                                    <option value="YAPE">YAPE</option>
+                                    <option value="PLIN">PLIN</option>
+                                    <option value="TRANSFERENCIA">TRANSFERENCIA</option>
+                                </select>
+                            </div>
+                            <div style={S.fieldGroup}>
+                                <label style={S.fieldLabel}>Doctor Responsable</label>
+                                <select 
+                                    value={paymentDoctorId} 
+                                    onChange={e => setPaymentDoctorId(e.target.value)} 
+                                    style={S.fieldInput}
+                                >
+                                    <option value="">-- Sin Asignar --</option>
+                                    {doctorsList.map(doc => (
+                                        <option key={doc.id} value={doc.id}>{doc.name}</option>
+                                    ))}
                                 </select>
                             </div>
                             <div style={S.fieldGroup}>

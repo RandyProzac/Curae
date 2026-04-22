@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Phone, Mail, Trash2, ChevronDown, ChevronRight, Pencil, Printer, MessageCircle } from 'lucide-react';
-import { supabase, budgetsApi, paymentsApi } from '../../lib/supabase';
+import { supabase, budgetsApi, paymentsApi, doctorsApi } from '../../lib/supabase';
 import { getStatusConfig } from '../../utils/constants';
 import ServiceSelector from '../appointments/ServiceSelector';
 import TreatmentPlans from '../clinical-history/TreatmentPlans';
@@ -45,6 +45,7 @@ const PatientDetailSidebar = ({ patient, isOpen, onClose }) => {
     const [paymentAmount, setPaymentAmount] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('VISA');
     const [paymentNotes, setPaymentNotes] = useState('');
+    const [paymentDoctorId, setPaymentDoctorId] = useState('');
 
     // Confirmation Modal
     const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null });
@@ -64,8 +65,20 @@ const PatientDetailSidebar = ({ patient, isOpen, onClose }) => {
     useEffect(() => {
         if (isOpen && patient) {
             loadPatientData();
+            loadDoctors();
         }
     }, [isOpen, patient]);
+
+    const loadDoctors = async () => {
+        if (doctorsList.length === 0) {
+            const { data } = await supabase
+                .from('doctors')
+                .select('id, name, color')
+                .neq('specialty', 'ADMINISTRACION')
+                .order('name');
+            setDoctorsList(data || []);
+        }
+    };
 
     const loadPatientData = async () => {
         setLoading(true);
@@ -212,6 +225,7 @@ const PatientDetailSidebar = ({ patient, isOpen, onClose }) => {
                 budget_item_id: paymentModal.item.id,
                 amount,
                 method: paymentMethod,
+                doctor_id: paymentDoctorId || null,
                 notes: paymentNotes || null,
                 date: new Date().toLocaleDateString('en-CA') // Save with local date to avoid TZ issues
             });
@@ -292,14 +306,6 @@ const PatientDetailSidebar = ({ patient, isOpen, onClose }) => {
 
     // ===== FILIACION EDIT =====
     const handleOpenEdit = async () => {
-        if (doctorsList.length === 0) {
-            const { data } = await supabase
-                .from('doctors')
-                .select('id, name, color')
-                .neq('specialty', 'ADMINISTRACION')
-                .order('name');
-            setDoctorsList(data || []);
-        }
         setEditForm({
             first_name: patientDetail?.first_name || '',
             last_name:  patientDetail?.last_name  || '',
@@ -597,6 +603,21 @@ const PatientDetailSidebar = ({ patient, isOpen, onClose }) => {
                                         <option value="BBVA">BBVA</option>
                                         <option value="INTERBANK">INTERBANK</option>
                                         <option value="EFECTIVO">EFECTIVO</option>
+                                        <option value="YAPE">YAPE</option>
+                                        <option value="PLIN">PLIN</option>
+                                        <option value="TRANSFERENCIA">TRANSFERENCIA</option>
+                                    </select>
+                                </div>
+                                <div className={styles.paymentField}>
+                                    <label>Doctor Responsable</label>
+                                    <select 
+                                        value={paymentDoctorId} 
+                                        onChange={e => setPaymentDoctorId(e.target.value)}
+                                    >
+                                        <option value="">-- Sin Asignar --</option>
+                                        {doctorsList.map(doc => (
+                                            <option key={doc.id} value={doc.id}>{doc.name}</option>
+                                        ))}
                                     </select>
                                 </div>
                                 <div className={styles.paymentField}>

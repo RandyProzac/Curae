@@ -84,15 +84,90 @@ const EvolutionOdontogram = ({
     };
 
     const handleToothClick = (numero) => {
-        if (selectedTool?.id === 'borrador') {
-            const newData = JSON.parse(JSON.stringify(currentData));
-            if (!newData.dientes) newData.dientes = {};
+        if (!selectedTool) {
+            setSelectedTooth(selectedTooth === numero ? null : numero);
+            return;
+        }
+
+        const newData = JSON.parse(JSON.stringify(currentData));
+        if (!newData.dientes) newData.dientes = {};
+        if (!newData.dientes[numero]) newData.dientes[numero] = { superficies: {}, hallazgos: [] };
+
+        // BORRADOR
+        if (selectedTool.id === 'borrador') {
             newData.dientes[numero] = { superficies: {}, hallazgos: [] };
             setCurrentData(newData);
             showToast('Pieza limpiada', 'info');
             return;
         }
+
+        // CURAR
+        if (selectedTool.id === 'curar') {
+            const hasCured = applyCureLogic(newData, numero);
+            if (hasCured) {
+                setCurrentData(newData);
+                showToast('✓ Pieza curada', 'success');
+            } else {
+                showToast('No hay hallazgo patológico para curar aquí', 'error');
+            }
+            return;
+        }
+
         setSelectedTooth(selectedTooth === numero ? null : numero);
+    };
+
+    // Helper to apply cure logic to a tooth (all surfaces + findings)
+    const applyCureLogic = (newData, numero, specificSurface = null) => {
+        if (!newData.dientes[numero]) return false;
+        
+        let curedAny = false;
+        const tooth = newData.dientes[numero];
+
+        // 1. Cure surfaces
+        const surfacesToCure = specificSurface ? [specificSurface] : Object.keys(tooth.superficies || {});
+        surfacesToCure.forEach(s => {
+            const currentSurface = tooth.superficies[s];
+            if (currentSurface && isRedColor(currentSurface.color)) {
+                let newId = 'resina';
+                if (currentSurface.hallazgo && currentSurface.hallazgo.includes('caries')) newId = 'resina';
+                
+                tooth.superficies[s] = {
+                    ...currentSurface,
+                    color: COLORS.AZUL,
+                    hallazgo: newId
+                };
+                curedAny = true;
+            }
+        });
+
+        // 2. Cure whole-tooth hallazgos
+        const hallazgos = tooth.hallazgos || [];
+        const ID_MAPPING = {
+            'carillas_mal': 'carillas',
+            'endodoncia_mal': 'endodoncia',
+            'espigo_munon_mal': 'espigo_munon',
+            'implante_mal': 'implante',
+            'protesis_fija_mal': 'protesis_fija',
+            'protesis_removible_mal': 'protesis_removible',
+            'protesis_total_mal': 'protesis_total',
+            'ortodoncia_fija_mal': 'ortodoncia_fija',
+            'ortodoncia_removible_mal': 'ortodoncia_removible',
+            'extraccion': 'ausente'
+        };
+
+        for (let i = 0; i < hallazgos.length; i++) {
+            if (isRedColor(hallazgos[i].color)) {
+                const oldId = hallazgos[i].id;
+                hallazgos[i] = {
+                    ...hallazgos[i],
+                    color: COLORS.AZUL,
+                    id: ID_MAPPING[oldId] || oldId
+                };
+                curedAny = true;
+            }
+        }
+
+        return curedAny;
     };
 
     const handleSurfaceClick = (numero, superficie) => {
@@ -107,47 +182,28 @@ const EvolutionOdontogram = ({
         const tool = selectedTool;
 
         // ERASER
-        // ERASER
         if (tool.id === 'borrador') {
             newData.dientes[numero] = { superficies: {}, hallazgos: [] };
             setCurrentData(newData);
             return;
         }
 
-        // CURAR — change red (pathological) to blue (treated)
+        // CURAR
         if (tool.id === 'curar') {
-            const currentSurface = newData.dientes[numero]?.superficies?.[superficie];
-
-            if (currentSurface && isRedColor(currentSurface.color)) {
-                let newId = 'restauracion_resina';
-                if (currentSurface.hallazgo && currentSurface.hallazgo.includes('caries')) newId = 'restauracion_resina';
-
-                newData.dientes[numero].superficies[superficie] = {
-                    ...currentSurface,
-                    color: COLORS.AZUL,
-                    hallazgo: newId,
-                };
+            const hasCured = applyCureLogic(newData, numero, superficie);
+            if (hasCured) {
+                setCurrentData(newData);
                 showToast('✓ Superficie curada', 'success');
-            } else if (currentSurface && isBlueColor(currentSurface.color)) {
-                showToast('Esta superficie ya está tratada', 'success');
             } else {
-                showToast('No hay hallazgo patológico para curar aquí', 'error');
-            }
-
-            // Also check whole-tooth hallazgos and cure any red ones
-            const hallazgos = newData.dientes[numero].hallazgos;
-            let curedAny = false;
-            for (let i = hallazgos.length - 1; i >= 0; i--) {
-                if (isRedColor(hallazgos[i].color)) {
-                    hallazgos[i] = { ...hallazgos[i], color: COLORS.AZUL };
-                    curedAny = true;
+                // If specific surface not red, try curing whole tooth
+                const curedWhole = applyCureLogic(newData, numero);
+                if (curedWhole) {
+                    setCurrentData(newData);
+                    showToast('✓ Pieza curada', 'success');
+                } else {
+                    showToast('No hay hallazgo patológico para curar aquí', 'error');
                 }
             }
-            if (curedAny && !currentSurface) {
-                showToast('✓ Pieza curada (hallazgos tratados)', 'success');
-            }
-
-            setCurrentData(newData);
             return;
         }
 

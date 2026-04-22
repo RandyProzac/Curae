@@ -86,7 +86,8 @@ export const AuthProvider = ({ children }) => {
       logout, 
       loading, 
       isAdmin: user?.role === 'ADMIN',
-      canModifyPrices: user?.role === 'ADMIN' && ['diego@curae.com', 'luciana@curae.com', 'asistencia@curae.com'].includes(user?.email?.toLowerCase())
+      canModifyPrices: user?.role === 'ADMIN' && ['diego@curae.com', 'luciana@curae.com', 'asistencia@curae.com'].includes(user?.email?.toLowerCase()),
+      canViewGlobalFinance: ['diego@curae.com', 'luciana@curae.com', 'asistencia@curae.com', 'mariaelena@curae.com'].includes(user?.email?.toLowerCase()) || user?.name?.toLowerCase().includes('maria elena') || user?.role === 'ADMIN'
     }}>
       {children}
     </AuthContext.Provider>

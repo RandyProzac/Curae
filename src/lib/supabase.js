@@ -388,6 +388,8 @@ export const eventsApi = {
     }
 };
 
+
+
 // ============================================
 // SERVICES (Servicios Clínicos)
 // ============================================
@@ -659,10 +661,18 @@ export const financeApi = {
     /**
      * Get total income between dates
      */
-    async getIncomeByPeriod(startDate, endDate) {
+    async getIncomeByPeriod(startDate, endDate, doctorId = null) {
         let query = supabase
             .from('payments')
-            .select('amount');
+            .select(`
+                amount,
+                budget_item:budget_items (
+                    doctor_id,
+                    budget:budgets (
+                        patient:patients(doctor_id)
+                    )
+                )
+            `);
 
         if (startDate) query = query.gte('created_at', startDate);
         if (endDate) query = query.lte('created_at', endDate);
@@ -673,13 +683,22 @@ export const financeApi = {
             return 0;
         }
 
-        return data?.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0) || 0;
+        let validData = data || [];
+        if (doctorId) {
+            validData = validData.filter(p => {
+                const bi = p.budget_item;
+                const patient = bi?.budget?.patient;
+                return bi?.doctor_id === doctorId || (!bi?.doctor_id && patient?.doctor_id === doctorId);
+            });
+        }
+
+        return validData.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0) || 0;
     },
 
     /**
      * Get detailed list of all daily payments for manual reconciliation
      */
-    async getDailyIncomeDetails(startDate, endDate) {
+    async getDailyIncomeDetails(startDate, endDate, doctorId = null) {
         let query = supabase
             .from('payments')
             .select(`
@@ -687,6 +706,8 @@ export const financeApi = {
                 amount,
                 method,
                 created_at,
+                doctor_id,
+                payment_doctor:doctors!payments_doctor_id_fkey(name),
                 budget_item:budget_items (
                     service_name,
                     doctor_id,
@@ -713,19 +734,34 @@ export const financeApi = {
             return [];
         }
 
-        return payments.map(payment => {
-            const bi = payment.budget_item;
-            const patient = bi?.budget?.patient;
+        return payments
+            .filter(payment => {
+                if (!doctorId) return true;
+                const bi = payment.budget_item;
+                const patient = bi?.budget?.patient;
+                
+                // Matches doctorId if:
+                // 1. payment.doctor_id matches
+                // 2. OR payment.doctor_id is null AND (item.doctor_id matches OR (item.doctor_id is null AND patient.doctor_id matches))
+                return payment.doctor_id === doctorId || 
+                       (!payment.doctor_id && (bi?.doctor_id === doctorId || (!bi?.doctor_id && patient?.doctor_id === doctorId)));
+            })
+            .map(payment => {
+                const bi = payment.budget_item;
+                const patient = bi?.budget?.patient;
 
-            // Determine doctor attribution priority:
-            // 1. Doctor assigned to item
-            // 2. Doctor assigned to patient
-            let doctorName = 'Sin Asignar';
-            if (bi?.item_doctor?.name) {
-                doctorName = bi.item_doctor.name;
-            } else if (patient?.doctor?.name) {
-                doctorName = patient.doctor.name;
-            }
+                // Determine doctor attribution priority:
+                // 1. Doctor assigned explicitly to the payment
+                // 2. Doctor assigned to item
+                // 3. Doctor assigned to patient
+                let doctorName = 'Sin Asignar';
+                if (payment.payment_doctor?.name) {
+                    doctorName = payment.payment_doctor.name;
+                } else if (bi?.item_doctor?.name) {
+                    doctorName = bi.item_doctor.name;
+                } else if (patient?.doctor?.name) {
+                    doctorName = patient.doctor.name;
+                }
 
             return {
                 id: payment.id,
@@ -826,12 +862,14 @@ export const financeApi = {
     /**
      * Get revenue grouped by doctor (Accurate attribution via budget_items and patients)
      */
-    async getRevenueByDoctor(startDate = null, endDate = null) {
+    async getRevenueByDoctor(startDate = null, endDate = null, doctorId = null) {
         // 1. Get all payments joined with budget items and patients to find assigned doctors
         let query = supabase
             .from('payments')
             .select(`
                 amount,
+                doctor_id,
+                payment_doctor:doctors!payments_doctor_id_fkey(name),
                 budget_item:budget_items (
                     doctor_id,
                     budget:budgets (
@@ -861,13 +899,22 @@ export const financeApi = {
             const bi = payment.budget_item;
             const patient = bi?.budget?.patient;
 
+            // Filter if doctorId is provided
+            if (doctorId) {
+                const isRelevant = payment.doctor_id === doctorId || (!payment.doctor_id && (bi?.doctor_id === doctorId || (!bi?.doctor_id && patient?.doctor_id === doctorId)));
+                if (!isRelevant) return;
+            }
+
             // Priority:
-            // 1. Doctor assigned to the specific treatment (budget_item)
-            // 2. Primary doctor assigned to the patient
-            // 3. 'Sin Asignar'
+            // 1. Doctor explicitly assigned to payment
+            // 2. Doctor assigned to the specific treatment (budget_item)
+            // 3. Primary doctor assigned to the patient
+            // 4. 'Sin Asignar'
             let docName = 'Sin Asignar';
 
-            if (bi?.item_doctor?.name) {
+            if (payment.payment_doctor?.name) {
+                docName = payment.payment_doctor.name;
+            } else if (bi?.item_doctor?.name) {
                 docName = bi.item_doctor.name;
             } else if (patient?.doctor?.name) {
                 docName = patient.doctor.name;
@@ -887,18 +934,16 @@ export const financeApi = {
      * Get finance stats per patient (Total Paid and Total Budget)
      * Useful for identifying top spenders and patient value
      */
-    async getPatientFinanceStats(limit = 10, startDate = null, endDate = null) {
+    async getPatientFinanceStats(limit = 10, startDate = null, endDate = null, doctorId = null) {
         try {
             // 1. Get all budgets with items to calculate total commitment
-            // Note: Commitment is usually all-time per patient, but we could link it to the period if needed.
-            // For now, we fetch all to have context, but we will focus on payments in the period.
             const { data: budgets, error: bError } = await supabase
                 .from('budgets')
                 .select(`
                     id,
                     patient_id,
-                    patient:patients(first_name, last_name, dni),
-                    budget_items(unit_price, quantity, discount, discount_type)
+                    patient:patients(first_name, last_name, dni, doctor_id),
+                    budget_items(unit_price, quantity, discount, discount_type, doctor_id)
                 `);
 
             if (bError) throw bError;
@@ -906,7 +951,7 @@ export const financeApi = {
             // 2. Get all payments to calculate actual revenue
             let pQuery = supabase
                 .from('payments')
-                .select('amount, created_at, budget_item:budget_items(budget_id)');
+                .select('amount, created_at, doctor_id, budget_item:budget_items(budget_id, doctor_id)');
 
             if (startDate) pQuery = pQuery.gte('created_at', startDate);
             if (endDate) pQuery = pQuery.lte('created_at', endDate);
@@ -922,6 +967,18 @@ export const financeApi = {
             budgets.forEach(b => {
                 if (!b.patient_id) return;
                 const pid = b.patient_id;
+                
+                const patDocId = b.patient?.doctor_id;
+                
+                let includedItems = [];
+                if (doctorId) {
+                    includedItems = (b.budget_items || []).filter(item => item.doctor_id === doctorId || (!item.doctor_id && patDocId === doctorId));
+                } else {
+                    includedItems = b.budget_items || [];
+                }
+                
+                if (doctorId && includedItems.length === 0) return; // Skip if no relevant items for this doctor
+
                 if (!statsMap[pid]) {
                     statsMap[pid] = {
                         id: pid,
@@ -932,7 +989,7 @@ export const financeApi = {
                     };
                 }
 
-                (b.budget_items || []).forEach(item => {
+                includedItems.forEach(item => {
                     const raw = (parseFloat(item.unit_price) || 0) * (item.quantity || 1);
                     const disc = parseFloat(item.discount) || 0;
                     const amount = item.discount_type === 'percent' ? raw * (1 - disc / 100) : raw - disc;
@@ -941,13 +998,26 @@ export const financeApi = {
             });
 
             // Process payments for actual revenue
-            // (Alternative: we could use the paid_amount on budget_items if trusted)
             payments.forEach(p => {
-                const budgetId = p.budget_item?.budget_id;
+                if (!p.budget_item?.budget_id) return;
+                
+                // Track revenue only if it matches doctorId
+                if (doctorId) {
+                    const matchesDoctor = p.doctor_id === doctorId || (!p.doctor_id && p.budget_item.doctor_id === doctorId);
+                    if (!matchesDoctor) return;
+                }
+
+                const bi = p.budget_item;
+                const budgetId = bi?.budget_id;
                 const budget = budgets.find(b => b.id === budgetId);
                 const pid = budget?.patient_id;
+                
                 if (pid && statsMap[pid]) {
-                    statsMap[pid].totalPaid += parseFloat(p.amount) || 0;
+                    const patDocId = budget?.patient?.doctor_id;
+                    const isRelevant = !doctorId || bi?.doctor_id === doctorId || (!bi?.doctor_id && patDocId === doctorId);
+                    if (isRelevant) {
+                        statsMap[pid].totalPaid += parseFloat(p.amount) || 0;
+                    }
                 }
             });
 
@@ -1100,6 +1170,16 @@ export const expensesApi = {
             .eq('id', id);
         if (error) throw error;
         return true;
+    },
+
+    async deleteByReference(ref) {
+        const { error } = await supabase
+            .from('expenses')
+            .delete()
+            .ilike('description', `%#LabID:${ref}%`);
+        if (error) {
+            console.warn('Error deleting expense by reference:', error);
+        }
     }
 };
 
@@ -1288,15 +1368,25 @@ export const purchasesApi = {
 // CASH FLOW (Resumen)
 // ============================================
 export const cashFlowApi = {
-    async getSummary(startDate, endDate) {
+    async getSummary(startDate, endDate, doctorId = null) {
         // 1. Income (Ingresos)
-        const income = await financeApi.getIncomeByPeriod(startDate, endDate);
+        const income = await financeApi.getIncomeByPeriod(startDate, endDate, doctorId);
 
         // 2. Expenses (Egresos Pagados)
+        if (doctorId) {
+            // Doctors don't have personal expenses recorded in this system yet
+            return {
+                income,
+                expenses: 0,
+                balance: income,
+                expensesByCategory: [],
+                transactions: []
+            };
+        }
+
         const { data: expenses, error } = await supabase
             .from('expenses')
             .select('*')
-            .eq('status', 'pagado')
             .gte('date', startDate)
             .lte('date', endDate);
 
@@ -1331,28 +1421,48 @@ export const cashFlowApi = {
         };
     },
 
-    async getMonthlyTrend(year = new Date().getFullYear()) {
+    async getMonthlyTrend(year = new Date().getFullYear(), doctorId = null) {
         const startOfYear = `${year}-01-01T00:00:00.000Z`;
         const endOfYear = `${year}-12-31T23:59:59.999Z`;
 
         // 1. Get Monthly Income
         const { data: payments, error: incomeError } = await supabase
             .from('payments')
-            .select('amount, created_at')
+            .select(`
+                amount, 
+                created_at,
+                doctor_id,
+                budget_item:budget_items (
+                    doctor_id,
+                    budget:budgets ( patient:patients(doctor_id) )
+                )
+            `)
             .gte('created_at', startOfYear)
             .lte('created_at', endOfYear);
 
         if (incomeError) throw incomeError;
 
-        // 2. Get Monthly Expenses
-        const { data: expenses, error: expenseError } = await supabase
-            .from('expenses')
-            .select('amount, date')
-            .eq('status', 'pagado')
-            .gte('date', startOfYear)
-            .lte('date', endOfYear);
+        let validPayments = payments || [];
+        if (doctorId) {
+            validPayments = validPayments.filter(p => {
+                const bi = p.budget_item;
+                const patient = bi?.budget?.patient;
+                return p.doctor_id === doctorId || (!p.doctor_id && (bi?.doctor_id === doctorId || (!bi?.doctor_id && patient?.doctor_id === doctorId)));
+            });
+        }
 
-        if (expenseError) throw expenseError;
+        // 2. Get Monthly Expenses
+        let expenses = [];
+        if (!doctorId) {
+            const { data: expData, error: expenseError } = await supabase
+                .from('expenses')
+                .select('amount, date')
+                .eq('status', 'pagado')
+                .gte('date', startOfYear)
+                .lte('date', endOfYear);
+            if (expenseError) throw expenseError;
+            expenses = expData || [];
+        }
 
         // 3. Process Data
         const months = [
@@ -1362,23 +1472,12 @@ export const cashFlowApi = {
 
         const trendData = months.map(m => ({ name: m, ingresos: 0, gastos: 0 }));
 
-        payments.forEach(p => {
+        validPayments.forEach(p => {
             const monthIndex = new Date(p.created_at).getMonth();
             trendData[monthIndex].ingresos += parseFloat(p.amount);
         });
 
         expenses.forEach(e => {
-            // Note: date in expenses is YYYY-MM-DD (string) or Date object depending on how Supabase returns it.
-            // Usually string '2025-01-20'. 
-            // We use new Date(e.date + 'T00:00:00') to avoid timezone issues or just parse the string substring
-            const monthIndex = new Date(e.date).getMonth();
-            // Be careful with timezone, simple approach:
-            // const parts = e.date.split('-'); const monthIndex = parseInt(parts[1]) - 1;
-            // Let's use Date but ensure UTC handling if needed. Local date string usually parses to local time components.
-            // Actually, best specific parsing:
-            const d = new Date(e.date);
-            // new Date('2025-01-01') is UTC. getMonth() returns month based on local time? No, it depends.
-            // Safe parser:
             const monthIdx = parseInt(e.date.split('-')[1], 10) - 1;
             if (monthIdx >= 0 && monthIdx <= 11) {
                 trendData[monthIdx].gastos += parseFloat(e.amount);

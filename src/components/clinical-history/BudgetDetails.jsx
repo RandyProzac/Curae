@@ -37,6 +37,8 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
     const [paymentAmount, setPaymentAmount] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('VISA');
     const [paymentNotes, setPaymentNotes] = useState('');
+    const [paymentDoctorId, setPaymentDoctorId] = useState('');
+    const [doctorsList, setDoctorsList] = useState([]);
 
     // Confirm Modal
     const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null });
@@ -63,6 +65,7 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
             if (user?.name) {
                 try {
                     const docs = await doctorsApi.getAll();
+                    setDoctorsList(docs.filter(d => d.active !== false));
                     const userParts = user.name.toLowerCase().split(' ');
                     const userFirst = userParts[0];
                     const userLast = userParts[userParts.length - 1];
@@ -246,6 +249,7 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                 budget_item_id: item.id,
                 amount,
                 method: paymentMethod,
+                doctor_id: paymentDoctorId || null,
                 notes: paymentNotes || null,
             });
 
@@ -403,6 +407,7 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                                                         onClick={() => {
                                                             setPaymentModal({ open: true, item });
                                                             setPaymentAmount(remaining.toFixed(2));
+                                                            setPaymentDoctorId(item.doctor_id || user?.id || '');
                                                         }}
                                                     >Pagar</button>
                                                 ) : (
@@ -597,6 +602,22 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                                         <option value="BBVA">BBVA</option>
                                         <option value="INTERBANK">INTERBANK</option>
                                         <option value="EFECTIVO">EFECTIVO</option>
+                                        <option value="YAPE">YAPE</option>
+                                        <option value="PLIN">PLIN</option>
+                                        <option value="TRANSFERENCIA">TRANSFERENCIA</option>
+                                    </select>
+                                </div>
+                                <div style={S.fieldGroup}>
+                                    <label style={S.fieldLabel}>Doctor Responsable</label>
+                                    <select 
+                                        value={paymentDoctorId} 
+                                        onChange={e => setPaymentDoctorId(e.target.value)} 
+                                        style={S.fieldInput}
+                                    >
+                                        <option value="">-- Sin Asignar --</option>
+                                        {doctorsList.map(doc => (
+                                            <option key={doc.id} value={doc.id}>{doc.name}</option>
+                                        ))}
                                     </select>
                                 </div>
                                 <div style={S.modalActions}>

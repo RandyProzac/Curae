@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, CheckCircle, Clock, Truck, Hammer, Edit2 } from 'lucide-react';
-import { labWorkApi, doctorsApi } from '../../lib/supabase';
+import { labWorkApi, doctorsApi, expensesApi, patientsApi } from '../../lib/supabase';
 import { useAuth } from '../../contexts/useAuth';
 
 export default function ClinicalHistoryLabWork({ patientId }) {
     const { user } = useAuth();
     const [labWorks, setLabWorks] = useState([]);
     const [doctors, setDoctors] = useState([]);
+    const [patient, setPatient] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
 
@@ -35,12 +36,14 @@ export default function ClinicalHistoryLabWork({ patientId }) {
     const loadData = async () => {
         setLoading(true);
         try {
-            const [works, docs] = await Promise.all([
+            const [works, docs, patientData] = await Promise.all([
                 labWorkApi.getByPatient(patientId),
-                doctorsApi.getAll()
+                doctorsApi.getAll(),
+                patientsApi.getById(patientId)
             ]);
             setLabWorks(works);
             setDoctors(docs);
+            setPatient(patientData);
 
             // Set default doctor ID if not set
             if (!formData.doctor_id && docs.length > 0) {
@@ -107,10 +110,45 @@ export default function ClinicalHistoryLabWork({ patientId }) {
                 doctor_id: formData.doctor_id || null
             };
 
+            const patientName = `${patient?.first_name || ''} ${patient?.last_name || ''}`.trim();
+
             if (editingId) {
                 await labWorkApi.update(editingId, payload);
+                
+                // Sync expense on update: delete existing and recreate if cost > 0
+                await expensesApi.deleteByReference(editingId);
+                if (payload.cost > 0) {
+                    try {
+                        await expensesApi.create({
+                            date: payload.sent_date,
+                            description: `Laboratorio: ${payload.work_type} - Paciente: ${patientName} #LabID:${editingId}`,
+                            supplier: payload.laboratory_name || 'Laboratorio',
+                            category: 'Laboratorio',
+                            amount: payload.cost,
+                            status: 'pendiente'
+                        });
+                    } catch (expError) {
+                        console.error('Error updating automatic expense:', expError);
+                    }
+                }
             } else {
-                await labWorkApi.create(payload);
+                const newWork = await labWorkApi.create(payload);
+                
+                // Automatically create an expense in Finance if there's a cost
+                if (newWork && payload.cost > 0) {
+                    try {
+                        await expensesApi.create({
+                            date: payload.sent_date,
+                            description: `Laboratorio: ${payload.work_type} - Paciente: ${patientName} #LabID:${newWork.id}`,
+                            supplier: payload.laboratory_name || 'Laboratorio',
+                            category: 'Laboratorio',
+                            amount: payload.cost,
+                            status: 'pendiente'
+                        });
+                    } catch (expError) {
+                        console.error('Error creating automatic expense:', expError);
+                    }
+                }
             }
             setShowForm(false);
             loadData();
@@ -124,6 +162,8 @@ export default function ClinicalHistoryLabWork({ patientId }) {
         if (window.confirm('¿Está seguro de eliminar este trabajo de laboratorio?')) {
             try {
                 await labWorkApi.delete(id);
+                // Also delete associated expense
+                await expensesApi.deleteByReference(id);
                 loadData();
             } catch (error) {
                 console.error('Error deleting lab work:', error);

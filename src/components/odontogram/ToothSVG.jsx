@@ -362,18 +362,20 @@ export default function ToothSVG({
 
     // ─── FRACTURA (línea diagonal roja) ───
     if (hasHallazgo('fractura') || data?.fractura?.presente) {
+      const c = getColor('fractura', COLORS.ROJO)
       markers.push(
-        <line key="fractura" x1={centerX - 10} y1={crownCenterY - 10} x2={centerX + 10} y2={crownCenterY + 10} stroke={COLORS.ROJO} strokeWidth={2} strokeLinecap="round" />
+        <line key="fractura" x1={centerX - 10} y1={crownCenterY - 10} x2={centerX + 10} y2={crownCenterY + 10} stroke={c} strokeWidth={2} strokeLinecap="round" />
       )
     }
 
     // ─── REMANENTE RADICULAR (RR text) ───
     if (hasHallazgo('remanente_radicular') || data?.raiz?.remanenteRadicular) {
+      const c = getColor('remanente_radicular', COLORS.ROJO)
       const rrY = textPad + crownHeight + 28
       markers.push(
         <g key="rr" transform={flipText(centerX, rrY - 3)}>
           <rect x={centerX - 10} y={rrY - 9} width={20} height={12} rx={3} fill="white" fillOpacity={0.9} />
-          <text x={centerX} y={rrY} textAnchor="middle" fill={COLORS.ROJO} fontSize={10} fontWeight="bold" fontFamily="Inter, sans-serif">
+          <text x={centerX} y={rrY} textAnchor="middle" fill={c} fontSize={10} fontWeight="bold" fontFamily="Inter, sans-serif">
             RR
           </text>
         </g>
@@ -465,8 +467,9 @@ export default function ToothSVG({
 
     // ─── CORONA TEMPORAL (square outline red) ───
     if (hasHallazgo('corona_temporal')) {
+      const c = getColor('corona_temporal', COLORS.ROJO)
       markers.push(
-        <rect key="corona_temp" x={centerX - size - 4} y={crownCenterY - size - 4} width={(size + 4) * 2} height={(size + 4) * 2} rx={1} fill="none" stroke={COLORS.ROJO} strokeWidth={2} />
+        <rect key="corona_temp" x={centerX - size - 4} y={crownCenterY - size - 4} width={(size + 4) * 2} height={(size + 4) * 2} rx={1} fill="none" stroke={c} strokeWidth={2} />
       )
     }
 
@@ -481,29 +484,32 @@ export default function ToothSVG({
 
     // ─── CARILLAS MAL ESTADO (U-shape red) ───
     if (hasHallazgo('carillas_mal')) {
+      const c = getColor('carillas_mal', COLORS.ROJO)
       const cy = crownCenterY - size + 2
       markers.push(
         <path key="carillas_mal" d={`M ${centerX - 8} ${cy} L ${centerX - 8} ${cy + 12} Q ${centerX} ${cy + 18} ${centerX + 8} ${cy + 12} L ${centerX + 8} ${cy}`}
-          fill={COLORS.ROJO} fillOpacity={0.6} stroke={COLORS.ROJO} strokeWidth={1.5} strokeLinecap="round" />
+          fill={c} fillOpacity={0.6} stroke={c} strokeWidth={1.5} strokeLinecap="round" />
       )
     }
 
     // ─── LESION CERVICAL (V notch at cervical) ───
     if (hasHallazgo('lesion_cervical')) {
+      const c = getColor('lesion_cervical', COLORS.ROJO)
       const cervY = crownHeight + 2
       markers.push(
         <path key="lesion_cervical" d={`M ${centerX - 6} ${cervY - 2} L ${centerX} ${cervY + 5} L ${centerX + 6} ${cervY - 2}`}
-          fill="none" stroke={COLORS.ROJO} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+          fill="none" stroke={c} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
       )
     }
 
     // ─── GINGIVITIS (wavy red line at gum line) ───
     if (hasHallazgo('gingivitis')) {
+      const c = getColor('gingivitis', COLORS.ROJO)
       const gumY = crownHeight + 2
       markers.push(
         <path key="gingivitis"
           d={`M ${centerX - 12} ${gumY} Q ${centerX - 8} ${gumY - 4} ${centerX - 4} ${gumY} Q ${centerX} ${gumY + 4} ${centerX + 4} ${gumY} Q ${centerX + 8} ${gumY - 4} ${centerX + 12} ${gumY}`}
-          fill="none" stroke={COLORS.ROJO} strokeWidth={1.8} strokeLinecap="round" />
+          fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round" />
       )
     }
 
@@ -592,10 +598,11 @@ export default function ToothSVG({
 
     // ─── IMPLANTE MAL ESTADO ───
     if (hasHallazgo('implante_mal')) {
+      const c = getColor('implante_mal', COLORS.ROJO)
       markers.push(
         <g key="implante_mal">
-          <rect x={centerX - 4} y={crownHeight + 10} width={8} height={rootHeight - 15} fill={COLORS.ROJO} rx={1} />
-          <circle cx={centerX} cy={crownHeight + 6} r={5} fill="none" stroke={COLORS.ROJO} strokeWidth={2} />
+          <rect x={centerX - 4} y={crownHeight + 10} width={8} height={rootHeight - 15} fill={c} rx={1} />
+          <circle cx={centerX} cy={crownHeight + 6} r={5} fill="none" stroke={c} strokeWidth={2} />
         </g>
       )
     }
@@ -661,17 +668,18 @@ export default function ToothSVG({
 
     // ─── FRENILLO CORTO (inverted V between roots) ───
     if (hasHallazgo('frenillo_corto')) {
+      const c = getColor('frenillo_corto', COLORS.ROJO)
       const fy = rootStartY + 8
       markers.push(
         <path key="frenillo"
           d={`M ${centerX - 8} ${fy + 12} Q ${centerX} ${fy - 2} ${centerX + 8} ${fy + 12}`}
-          fill="none" stroke={COLORS.ROJO} strokeWidth={2} strokeLinecap="round" />
+          fill="none" stroke={c} strokeWidth={2} strokeLinecap="round" />
       )
     }
 
     // ─── ESPIGO MUÑON (T-shape: line in root + square at top) ───
     if (hasHallazgo('espigo_munon') || hasHallazgo('espigo_munon_mal')) {
-      const c = hasHallazgo('espigo_munon_mal') ? COLORS.ROJO : COLORS.AZUL
+      const c = hasHallazgo('espigo_munon_mal') ? getColor('espigo_munon_mal', COLORS.ROJO) : getColor('espigo_munon', COLORS.AZUL)
       markers.push(
         <g key="espigo">
           <line x1={centerX} y1={rootStartY + 6} x2={centerX} y2={rootStartY + rootHeight * 0.6} stroke={c} strokeWidth={2.5} strokeLinecap="round" />
@@ -702,7 +710,7 @@ export default function ToothSVG({
 
     // ─── PROTESIS FIJA (horizontal line across tooth) ───
     if (hasHallazgo('protesis_fija') || hasHallazgo('protesis_fija_mal') || data?.protesisFija) {
-      const c = hasHallazgo('protesis_fija_mal') ? COLORS.ROJO : COLORS.AZUL
+      const c = hasHallazgo('protesis_fija_mal') ? getColor('protesis_fija_mal', COLORS.ROJO) : getColor('protesis_fija', COLORS.AZUL)
       markers.push(
         <line key="pf" x1={-2} y1={2} x2={width + 2} y2={2} stroke={c} strokeWidth={3} strokeLinecap="round" />
       )
@@ -710,7 +718,7 @@ export default function ToothSVG({
 
     // ─── PROTESIS REMOVIBLE (double horizontal line) ───
     if (hasHallazgo('protesis_removible') || hasHallazgo('protesis_removible_mal') || data?.protesisRemovible) {
-      const c = hasHallazgo('protesis_removible_mal') ? COLORS.ROJO : COLORS.AZUL
+      const c = hasHallazgo('protesis_removible_mal') ? getColor('protesis_removible_mal', COLORS.ROJO) : getColor('protesis_removible', COLORS.AZUL)
       markers.push(
         <g key="pr">
           <line x1={-2} y1={1} x2={width + 2} y2={1} stroke={c} strokeWidth={2} strokeLinecap="round" />
@@ -721,7 +729,7 @@ export default function ToothSVG({
 
     // ─── PROTESIS TOTAL (double horizontal lines over crowns) ───
     if (hasHallazgo('protesis_total') || hasHallazgo('protesis_total_mal')) {
-      const c = hasHallazgo('protesis_total_mal') ? COLORS.ROJO : COLORS.AZUL
+      const c = hasHallazgo('protesis_total_mal') ? getColor('protesis_total_mal', COLORS.ROJO) : getColor('protesis_total', COLORS.AZUL)
       markers.push(
         <g key="pt">
           <line x1={-2} y1={crownCenterY - 1} x2={width + 2} y2={crownCenterY - 1} stroke={c} strokeWidth={2} strokeLinecap="round" />
@@ -732,7 +740,7 @@ export default function ToothSVG({
 
     // ─── APARATO ORTODONTICO FIJO (bracket + wire) ───
     if (hasHallazgo('ortodoncia_fija') || hasHallazgo('ortodoncia_fija_mal') || data?.ortodonciaFija) {
-      const c = hasHallazgo('ortodoncia_fija_mal') ? COLORS.ROJO : COLORS.AZUL
+      const c = hasHallazgo('ortodoncia_fija_mal') ? getColor('ortodoncia_fija_mal', COLORS.ROJO) : getColor('ortodoncia_fija', COLORS.AZUL)
       markers.push(
         <g key="of">
           {/* Bracket (square with cross) */}
@@ -747,7 +755,7 @@ export default function ToothSVG({
 
     // ─── APARATO ORTODONTICO REMOVIBLE (chevron/zigzag) ───
     if (hasHallazgo('ortodoncia_removible') || hasHallazgo('ortodoncia_removible_mal') || data?.ortodonciaRemovible) {
-      const c = hasHallazgo('ortodoncia_removible_mal') ? COLORS.ROJO : COLORS.AZUL
+      const c = hasHallazgo('ortodoncia_removible_mal') ? getColor('ortodoncia_removible_mal', COLORS.ROJO) : getColor('ortodoncia_removible', COLORS.AZUL)
       markers.push(
         <path key="or"
           d={`M ${centerX - 12} ${crownCenterY + size + 6} L ${centerX} ${crownCenterY + size - 2} L ${centerX + 12} ${crownCenterY + size + 6}`}

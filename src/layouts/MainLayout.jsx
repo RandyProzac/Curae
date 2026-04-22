@@ -63,7 +63,7 @@ const MainLayout = () => {
         { path: '/pacientes', icon: <Users size={20} />, label: 'Pacientes' },
         { path: '/servicios', icon: <Stethoscope size={20} />, label: 'Servicios' },
         { path: '/doctores', icon: <Users size={20} />, label: 'Doctores' },
-        { path: '/finanzas', icon: <Wallet size={20} />, label: 'Finanzas', adminOnly: true },
+        { path: '/finanzas', icon: <Wallet size={20} />, label: 'Finanzas' },
         { path: '/inventario', icon: <ShoppingCart size={20} />, label: 'Inventario' },
 
         { path: '/integraciones', icon: <Plug size={20} />, label: 'Integraciones' },

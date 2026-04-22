@@ -11,6 +11,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import styles from './FinancePage.module.css';
 import { financeApi, expensesApi, cashFlowApi, inventoryApi } from '../lib/supabase';
+import { useAuth } from '../contexts/useAuth';
 // import ExpenseModal from '../components/finance/ExpenseModal';
 
 // --- CONSTANTS ---
@@ -86,6 +87,7 @@ const TodayCard = ({ title, value, type, onClick }) => {
 
 const FinancePage = () => {
     const navigate = useNavigate();
+    const { user, canViewGlobalFinance } = useAuth();
     const [loading, setLoading] = useState(true);
     const [selectedDay, setSelectedDay] = useState(new Date());
     const [selectedMonth, setSelectedMonth] = useState(new Date());
@@ -113,11 +115,13 @@ const FinancePage = () => {
             const dayEnd = new Date(selectedDay);
             dayEnd.setHours(23, 59, 59, 999);
 
+            const filterDocId = canViewGlobalFinance ? null : user?.id;
+
             const [dayIncome, dayExpensesList] = await Promise.all([
-                financeApi.getIncomeByPeriod(dayStart.toISOString(), dayEnd.toISOString()),
-                expensesApi.getByPeriod(dayStart.toISOString(), dayEnd.toISOString())
+                financeApi.getIncomeByPeriod(dayStart.toISOString(), dayEnd.toISOString(), filterDocId),
+                filterDocId ? Promise.resolve([]) : expensesApi.getByPeriod(dayStart.toISOString(), dayEnd.toISOString())
             ]);
-            const dayTotalExp = dayExpensesList.reduce((acc, e) => acc + (parseFloat(e.amount) || 0), 0);
+            const dayTotalExp = filterDocId ? 0 : dayExpensesList.reduce((acc, e) => acc + (parseFloat(e.amount) || 0), 0);
 
             // 2. Monthly Summary (Based on selectedMonth)
             const monthYear = selectedMonth.getFullYear();
@@ -126,18 +130,22 @@ const FinancePage = () => {
             const endOfMonth = new Date(monthYear, monthIdx + 1, 0, 23, 59, 59, 999).toISOString();
 
             const [summary, docRev, patientStats] = await Promise.all([
-                cashFlowApi.getSummary(startOfMonth, endOfMonth),
-                financeApi.getRevenueByDoctor(startOfMonth, endOfMonth),
-                financeApi.getPatientFinanceStats(0, startOfMonth, endOfMonth)
+                cashFlowApi.getSummary(startOfMonth, endOfMonth, filterDocId),
+                financeApi.getRevenueByDoctor(startOfMonth, endOfMonth, filterDocId),
+                financeApi.getPatientFinanceStats(0, startOfMonth, endOfMonth, filterDocId)
             ]);
 
             // 3. Annual Trend (Based on selectedYear)
-            const trend = await cashFlowApi.getMonthlyTrend(selectedYear);
+            const trend = await cashFlowApi.getMonthlyTrend(selectedYear, filterDocId);
 
             // 4. Inventory Impact (Always current status)
-            const products = await inventoryApi.getProducts();
-            const totalInvValue = products.reduce((acc, p) => acc + (p.cost * p.stock), 0);
-            const lowStockItems = products.filter(p => p.stock <= p.min_stock);
+            let totalInvValue = 0;
+            let lowStockItems = [];
+            if (canViewGlobalFinance) {
+                const products = await inventoryApi.getProducts();
+                totalInvValue = products.reduce((acc, p) => acc + (p.cost * p.stock), 0);
+                lowStockItems = products.filter(p => p.stock <= p.min_stock);
+            }
 
             // 5. Generate Alerts
             const newAlerts = [];
@@ -179,7 +187,7 @@ const FinancePage = () => {
         } finally {
             setLoading(false);
         }
-    }, [selectedDay, selectedMonth, selectedYear]);
+    }, [selectedDay, selectedMonth, selectedYear, user, canViewGlobalFinance]);
 
     // Initial Load
     useEffect(() => {
@@ -208,14 +216,16 @@ const FinancePage = () => {
             {/* --- HEADER --- */}
             <header className={styles.header}>
                 <div className={styles.title}>
-                    <h2>Finanzas Maestras 📊</h2>
-                    <p>Visión estratégíca de tu consultorio.</p>
+                    <h2>{canViewGlobalFinance ? 'Finanzas Maestras 📊' : 'Mis Finanzas 📊'}</h2>
+                    <p>{canViewGlobalFinance ? 'Visión estratégíca de tu consultorio.' : 'Resumen de tus ingresos generados.'}</p>
                 </div>
-                <div className={styles.controls}>
-                    <button className={styles.addExpenseBtn} onClick={() => navigate('/gastos')}>
-                        <ShoppingCart size={16} /> <span>Gestionar Gastos</span>
-                    </button>
-                </div>
+                {canViewGlobalFinance && (
+                    <div className={styles.controls}>
+                        <button className={styles.addExpenseBtn} onClick={() => navigate('/gastos')}>
+                            <ShoppingCart size={16} /> <span>Gestionar Gastos</span>
+                        </button>
+                    </div>
+                )}
             </header>
 
             {loading ? (
@@ -381,48 +391,52 @@ const FinancePage = () => {
                         </div>
 
                         {/* B. INCOME SOURCES */}
-                        <div className={styles.sideCard}>
-                            <h4 className={styles.sideTitle}>Top Doctores (Ingresos)</h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                {revenueByDoctor.map((doc, i) => (
-                                    <div key={i} className={styles.inventoryItem}>
-                                        <span className={styles.itemName}>{doc.name}</span>
-                                        <span className={styles.itemValue}>{formatCurrency(doc.total)}</span>
-                                    </div>
-                                ))}
-                                {revenueByDoctor.length === 0 && <div style={{ color: '#94a3b8' }}>Sin datos aún.</div>}
+                        {canViewGlobalFinance && (
+                            <div className={styles.sideCard}>
+                                <h4 className={styles.sideTitle}>Top Doctores (Ingresos)</h4>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    {revenueByDoctor.map((doc, i) => (
+                                        <div key={i} className={styles.inventoryItem}>
+                                            <span className={styles.itemName}>{doc.name}</span>
+                                            <span className={styles.itemValue}>{formatCurrency(doc.total)}</span>
+                                        </div>
+                                    ))}
+                                    {revenueByDoctor.length === 0 && <div style={{ color: '#94a3b8' }}>Sin datos aún.</div>}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* C. EXPENSE BREAKDOWN (Simple Pie) */}
-                        <div className={styles.sideCard}>
-                            <h4 className={styles.sideTitle}>Distribución de Gastos</h4>
-                            <div style={{ height: 200, width: '100%' }}>
-                                <ResponsiveContainer>
-                                    <PieChart>
-                                        <Pie
-                                            data={topExpenses}
-                                            innerRadius={50}
-                                            outerRadius={70}
-                                            paddingAngle={5}
-                                            dataKey="value"
-                                        >
-                                            {topExpenses.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip formatter={(val) => formatCurrency(val)} />
-                                    </PieChart>
-                                </ResponsiveContainer>
+                        {canViewGlobalFinance && (
+                            <div className={styles.sideCard}>
+                                <h4 className={styles.sideTitle}>Distribución de Gastos</h4>
+                                <div style={{ height: 200, width: '100%' }}>
+                                    <ResponsiveContainer>
+                                        <PieChart>
+                                            <Pie
+                                                data={topExpenses}
+                                                innerRadius={50}
+                                                outerRadius={70}
+                                                paddingAngle={5}
+                                                dataKey="value"
+                                            >
+                                                {topExpenses.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip formatter={(val) => formatCurrency(val)} />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: -10 }}>
+                                    {topExpenses.slice(0, 3).map((e, i) => (
+                                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', color: '#64748b' }}>
+                                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS[i] }}></div> {e.name}
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: -10 }}>
-                                {topExpenses.slice(0, 3).map((e, i) => (
-                                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', color: '#64748b' }}>
-                                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS[i] }}></div> {e.name}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                        )}
 
                     </div>
 

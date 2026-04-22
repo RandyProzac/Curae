@@ -68,9 +68,9 @@ const AppRouter = () => {
 
                 {/* Placeholders */}
                 <Route path="agenda" element={<div>Módulo Agenda (Próximamente)</div>} />
-                <Route path="finanzas" element={<ProtectedRoute requireAdmin><FinancePage /></ProtectedRoute>} />
-                <Route path="finanzas/ingresos-diarios" element={<ProtectedRoute requireAdmin><DailyIncomePage /></ProtectedRoute>} />
-                <Route path="finanzas/ingresos-mensuales" element={<ProtectedRoute requireAdmin><MonthlyIncomePage /></ProtectedRoute>} />
+                <Route path="finanzas" element={<ProtectedRoute><FinancePage /></ProtectedRoute>} />
+                <Route path="finanzas/ingresos-diarios" element={<ProtectedRoute><DailyIncomePage /></ProtectedRoute>} />
+                <Route path="finanzas/ingresos-mensuales" element={<ProtectedRoute><MonthlyIncomePage /></ProtectedRoute>} />
                 <Route path="gastos" element={<ProtectedRoute requireAdmin><ExpensesPage /></ProtectedRoute>} />
                 <Route path="doctores" element={<DoctorsPage />} />
 

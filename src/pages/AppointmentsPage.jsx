@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Calendar,
     Clock,
@@ -13,7 +14,8 @@ import {
     Filter,
     Trash2,
     AlertTriangle,
-    Info
+    Info,
+    FileText
 } from 'lucide-react';
 import { supabase, doctorsApi, servicesApi, patientsApi, appointmentsApi } from '../lib/supabase';
 import TimeCombobox from '../components/appointments/TimeCombobox';
@@ -42,6 +44,7 @@ let sessionCache = {
 };
 
 const AppointmentsPage = () => {
+    const navigate = useNavigate();
     // --- STATE ---
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState('month');
@@ -1208,28 +1211,64 @@ const AppointmentsPage = () => {
                                     </div>
 
                                     {/* Meta */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0f766e', background: '#f0fdfa', padding: '6px 12px', borderRadius: '20px' }}>
                                             <Clock size={16} />
                                             <span style={{ fontWeight: '600', fontSize: '14px' }}>{apt.startTime}</span>
                                         </div>
 
-                                        <div style={{ fontSize: '14px', color: '#475569' }}>
+                                        <div style={{ fontSize: '14px', color: '#475569', minWidth: '150px' }}>
                                             {doctorsData.find(d => d.id === apt.doctorId)?.name || 'Doctor'}
                                         </div>
 
                                         {apt.type !== 'event' && (
-                                            <div style={{
-                                                padding: '6px 12px', borderRadius: '20px',
-                                                background: getStatusConfig(apt.status).bgColor,
-                                                color: getStatusConfig(apt.status).color,
-                                                fontSize: '11px', fontWeight: '700',
-                                                textTransform: 'uppercase', letterSpacing: '0.5px',
-                                                display: 'flex', alignItems: 'center', gap: '6px',
-                                                border: `1px solid ${getStatusConfig(apt.status).color}40`
-                                            }}>
-                                                {getStatusConfig(apt.status).icon}
-                                                {getStatusConfig(apt.status).label}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                <div style={{
+                                                    padding: '6px 12px', borderRadius: '20px',
+                                                    background: getStatusConfig(apt.status).bgColor,
+                                                    color: getStatusConfig(apt.status).color,
+                                                    fontSize: '11px', fontWeight: '700',
+                                                    textTransform: 'uppercase', letterSpacing: '0.5px',
+                                                    display: 'flex', alignItems: 'center', gap: '6px',
+                                                    border: `1px solid ${getStatusConfig(apt.status).color}40`
+                                                }}>
+                                                    {getStatusConfig(apt.status).icon}
+                                                    {getStatusConfig(apt.status).label}
+                                                </div>
+
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigate(`/pacientes/${apt.patientId}/historia-clinica`);
+                                                    }}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '6px',
+                                                        padding: '6px 12px',
+                                                        background: '#f8fafc',
+                                                        border: '1px solid #e2e8f0',
+                                                        borderRadius: '20px',
+                                                        color: '#475569',
+                                                        fontWeight: '600',
+                                                        fontSize: '12px',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                    onMouseOver={(e) => {
+                                                        e.currentTarget.style.background = '#f1f5f9';
+                                                        e.currentTarget.style.borderColor = '#cbd5e1';
+                                                        e.currentTarget.style.color = '#1e293b';
+                                                    }}
+                                                    onMouseOut={(e) => {
+                                                        e.currentTarget.style.background = '#f8fafc';
+                                                        e.currentTarget.style.borderColor = '#e2e8f0';
+                                                        e.currentTarget.style.color = '#475569';
+                                                    }}
+                                                >
+                                                    <FileText size={14} />
+                                                    Historia Clínica
+                                                </button>
                                             </div>
                                         )}
                                     </div>
@@ -1387,6 +1426,30 @@ const AppointmentsPage = () => {
                         <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <h3 style={{ margin: 0, fontSize: '18px', color: '#1e293b' }}>Detalles de la Cita</h3>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                {selectedAppointment.type === 'appointment' && (
+                                    <button
+                                        onClick={() => navigate(`/pacientes/${selectedAppointment.patientId}/historia-clinica`)}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            padding: '6px 12px',
+                                            background: '#f8fafc',
+                                            border: '1px solid #e2e8f0',
+                                            borderRadius: '6px',
+                                            color: '#475569',
+                                            fontWeight: '600',
+                                            fontSize: '13px',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                                        onMouseOut={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                    >
+                                        <FileText size={16} />
+                                        Historia Clínica
+                                    </button>
+                                )}
                                 <button
                                     onClick={handleEdit}
                                     style={{
