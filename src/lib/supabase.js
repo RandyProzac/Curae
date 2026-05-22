@@ -606,9 +606,181 @@ export const paymentsApi = {
 };
 
 // ============================================
+// VOUCHERS (Boletas de Venta)
+// ============================================
+export const vouchersApi = {
+    /**
+     * Create a voucher in one atomic operation.
+     * Steps:
+     *   1. Insert voucher header → get id + ticket_number
+     *   2. Insert voucher_items (one per selected budget item)
+     *   3. Insert voucher_payment_methods (split payment support)
+     *   4. Insert individual payments (for finance reports compatibility)
+     *   5. Update paid_amount on each budget_item
+     *
+     * @param {object} params
+     * @param {string}   params.patientId
+     * @param {string}   params.budgetId
+     * @param {string}   params.doctorId
+     * @param {Array}    params.items  - [{ budgetItemId, serviceName, quantity, unitPrice, amountPaid }]
+     * @param {Array}    params.paymentMethods - [{ method, amount }]
+     * @returns {object} Created voucher with ticket_number
+     */
+    async create({ patientId, budgetId, doctorId, items, paymentMethods }) {
+        const totalPaid = items.reduce((sum, i) => sum + parseFloat(i.amountPaid || 0), 0);
+
+        // 1. Insert voucher header
+        const { data: voucher, error: vErr } = await supabase
+            .from('vouchers')
+            .insert({
+                patient_id: patientId,
+                budget_id:  budgetId,
+                doctor_id:  doctorId || null,
+                total_paid: totalPaid,
+            })
+            .select()
+            .single();
+        if (vErr) throw vErr;
+
+        const voucherId = voucher.id;
+
+        // 2. Insert voucher_items
+        const voucherItemsPayload = items.map(i => ({
+            voucher_id:     voucherId,
+            budget_item_id: i.budgetItemId,
+            service_name:   i.serviceName,
+            quantity:       i.quantity || 1,
+            unit_price:     i.unitPrice || null,
+            amount_paid:    parseFloat(i.amountPaid),
+        }));
+        const { error: viErr } = await supabase.from('voucher_items').insert(voucherItemsPayload);
+        if (viErr) throw viErr;
+
+        // 3. Insert voucher_payment_methods
+        const methodsPayload = paymentMethods.map(m => ({
+            voucher_id: voucherId,
+            method:     m.method,
+            amount:     parseFloat(m.amount),
+        }));
+        const { error: pmErr } = await supabase.from('voucher_payment_methods').insert(methodsPayload);
+        if (pmErr) throw pmErr;
+
+        // 4. Insert individual payment records (finance compatibility)
+        const primaryMethod = paymentMethods[0]?.method || 'efectivo';
+        for (const item of items) {
+            const amount = parseFloat(item.amountPaid);
+            if (amount <= 0) continue;
+
+            const { error: pErr } = await supabase.from('payments').insert({
+                budget_item_id: item.budgetItemId,
+                amount,
+                method:         primaryMethod,
+                notes:          `Voucher #${String(voucher.ticket_number).padStart(8, '0')}`,
+                doctor_id:      doctorId || null,
+            });
+            if (pErr) throw pErr;
+
+            // 5. Update paid_amount on budget_item
+            const { data: bi } = await supabase
+                .from('budget_items')
+                .select('paid_amount')
+                .eq('id', item.budgetItemId)
+                .single();
+
+            if (bi) {
+                const newPaid = parseFloat(bi.paid_amount || 0) + amount;
+                await supabase
+                    .from('budget_items')
+                    .update({ paid_amount: newPaid })
+                    .eq('id', item.budgetItemId);
+            }
+        }
+
+        return voucher;
+    },
+
+    /** Get all vouchers for a patient with full details */
+    async getByPatient(patientId) {
+        const { data, error } = await supabase
+            .from('vouchers')
+            .select(`
+                *,
+                patient:patients(id, first_name, last_name, dni),
+                doctor:doctors(id, name),
+                voucher_items(*),
+                voucher_payment_methods(*)
+            `)
+            .eq('patient_id', patientId)
+            .order('created_at', { ascending: false });
+        if (error) {
+            console.warn('Error fetching vouchers by patient:', error);
+            return [];
+        }
+        return data || [];
+    },
+
+    /** Get all vouchers in a date range (for Finance page) */
+    async getByDateRange(startDate = null, endDate = null) {
+        let query = supabase
+            .from('vouchers')
+            .select(`
+                *,
+                patient:patients(id, first_name, last_name, dni),
+                doctor:doctors(id, name),
+                voucher_items(*),
+                voucher_payment_methods(*)
+            `);
+        if (startDate) query = query.gte('created_at', startDate);
+        if (endDate)   query = query.lte('created_at', endDate);
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) {
+            console.warn('Error fetching vouchers by date range:', error);
+            return [];
+        }
+        return data || [];
+    },
+
+    /** Get a single voucher by ID (for reprint) */
+    async getById(id) {
+        const { data, error } = await supabase
+            .from('vouchers')
+            .select(`
+                *,
+                patient:patients(id, first_name, last_name, dni),
+                doctor:doctors(id, name),
+                voucher_items(*),
+                voucher_payment_methods(*)
+            `)
+            .eq('id', id)
+            .single();
+        if (error) throw error;
+        return data;
+    },
+};
+
+
+
+// ============================================
 // FINANCE & REPORTS (Finanzas)
 // ============================================
 export const financeApi = {
+    /**
+     * Update the attending doctor for a specific payment
+     */
+    async updatePaymentDoctor(paymentId, doctorId) {
+        const { data, error } = await supabase
+            .from('payments')
+            .update({ doctor_id: doctorId || null })
+            .eq('id', paymentId)
+            .select();
+        
+        if (error) {
+            console.error('Error updating payment doctor:', error);
+            throw error;
+        }
+        return data;
+    },
+
     /**
      * Get all payments with patient and budget details
      * Returns flattened structure for reporting
@@ -1106,11 +1278,17 @@ export const financeApi = {
 // EXPENSES (Gastos Operativos y Compras)
 // ============================================
 export const expensesApi = {
-    async getAll() {
-        const { data, error } = await supabase
+    async getAll(doctorId = null) {
+        let query = supabase
             .from('expenses')
             .select('*')
             .order('date', { ascending: false });
+            
+        if (doctorId) {
+            query = query.eq('doctor_id', doctorId);
+        }
+
+        const { data, error } = await query;
         if (error) {
             console.warn('Error fetching expenses:', error);
             return [];
@@ -1118,13 +1296,19 @@ export const expensesApi = {
         return data || [];
     },
 
-    async getByPeriod(startDate, endDate) {
-        const { data, error } = await supabase
+    async getByPeriod(startDate, endDate, doctorId = null) {
+        let query = supabase
             .from('expenses')
             .select('*')
             .gte('date', startDate)
             .lte('date', endDate)
             .order('date', { ascending: false });
+            
+        if (doctorId) {
+            query = query.eq('doctor_id', doctorId);
+        }
+
+        const { data, error } = await query;
         if (error) {
             console.warn('Error fetching expenses by period:', error);
             return [];
@@ -1373,22 +1557,17 @@ export const cashFlowApi = {
         const income = await financeApi.getIncomeByPeriod(startDate, endDate, doctorId);
 
         // 2. Expenses (Egresos Pagados)
-        if (doctorId) {
-            // Doctors don't have personal expenses recorded in this system yet
-            return {
-                income,
-                expenses: 0,
-                balance: income,
-                expensesByCategory: [],
-                transactions: []
-            };
-        }
-
-        const { data: expenses, error } = await supabase
+        let query = supabase
             .from('expenses')
             .select('*')
             .gte('date', startDate)
             .lte('date', endDate);
+
+        if (doctorId) {
+            query = query.eq('doctor_id', doctorId);
+        }
+
+        const { data: expenses, error } = await query;
 
         let safeExpenses = expenses;
         if (error) {
@@ -1453,16 +1632,20 @@ export const cashFlowApi = {
 
         // 2. Get Monthly Expenses
         let expenses = [];
-        if (!doctorId) {
-            const { data: expData, error: expenseError } = await supabase
-                .from('expenses')
-                .select('amount, date')
-                .eq('status', 'pagado')
-                .gte('date', startOfYear)
-                .lte('date', endOfYear);
-            if (expenseError) throw expenseError;
-            expenses = expData || [];
+        let expQuery = supabase
+            .from('expenses')
+            .select('amount, date')
+            .eq('status', 'pagado')
+            .gte('date', startOfYear)
+            .lte('date', endOfYear);
+            
+        if (doctorId) {
+            expQuery = expQuery.eq('doctor_id', doctorId);
         }
+
+        const { data: expData, error: expenseError } = await expQuery;
+        if (expenseError) throw expenseError;
+        expenses = expData || [];
 
         // 3. Process Data
         const months = [

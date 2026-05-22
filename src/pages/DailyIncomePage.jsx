@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Calendar, Search, Filter } from 'lucide-react';
-import { financeApi } from '../lib/supabase';
+import { ArrowLeft, Calendar, Search, Filter, Edit2, Check, X } from 'lucide-react';
+import { financeApi, doctorsApi } from '../lib/supabase';
 import { useAuth } from '../contexts/useAuth';
 import styles from './DailyIncomePage.module.css';
 
@@ -27,6 +27,12 @@ export default function DailyIncomePage() {
     const [isDoctorFilterOpen, setIsDoctorFilterOpen] = useState(false);
     const [selectedMethodFilter, setSelectedMethodFilter] = useState('');
     const [isMethodFilterOpen, setIsMethodFilterOpen] = useState(false);
+    
+    // Inline edit state
+    const [allDoctors, setAllDoctors] = useState([]);
+    const [editingPaymentId, setEditingPaymentId] = useState(null);
+    const [editDoctorId, setEditDoctorId] = useState('');
+    const [isSavingDoctor, setIsSavingDoctor] = useState(false);
 
     const loadData = async (dateObj) => {
         setLoading(true);
@@ -37,8 +43,14 @@ export default function DailyIncomePage() {
             dayEnd.setHours(23, 59, 59, 999);
 
             const filterDocId = canViewGlobalFinance ? null : user?.id;
-            const fetchedPayments = await financeApi.getDailyIncomeDetails(dayStart.toISOString(), dayEnd.toISOString(), filterDocId);
+            
+            const [fetchedPayments, doctorsRes] = await Promise.all([
+                financeApi.getDailyIncomeDetails(dayStart.toISOString(), dayEnd.toISOString(), filterDocId),
+                canViewGlobalFinance ? doctorsApi.getAll() : Promise.resolve([])
+            ]);
+            
             setPayments(fetchedPayments);
+            if (canViewGlobalFinance) setAllDoctors(doctorsRes);
         } catch (error) {
             console.error('Error fetching detailed daily income:', error);
         } finally {
@@ -56,6 +68,34 @@ export default function DailyIncomePage() {
         setSelectedDate(newDate);
         // Soft update URL without refreshing
         navigate(`/finanzas/ingresos-diarios?date=${e.target.value}`, { replace: true });
+    };
+
+    const handleEditClick = (payment) => {
+        setEditingPaymentId(payment.id);
+        // Find if the payment's attendingDoctor matches an existing doctor to pre-select
+        const foundDoc = allDoctors.find(d => d.name === payment.attendingDoctor);
+        setEditDoctorId(foundDoc ? foundDoc.id : '');
+    };
+
+    const handleCancelEdit = () => {
+        setEditingPaymentId(null);
+        setEditDoctorId('');
+    };
+
+    const handleSaveDoctor = async (paymentId) => {
+        setIsSavingDoctor(true);
+        try {
+            await financeApi.updatePaymentDoctor(paymentId, editDoctorId || null);
+            // Refresh data to get the updated payment with new resolved doctor
+            await loadData(selectedDate);
+            setEditingPaymentId(null);
+            setEditDoctorId('');
+        } catch (error) {
+            console.error('Error updating doctor:', error);
+            alert('Error al actualizar el tratante.');
+        } finally {
+            setIsSavingDoctor(false);
+        }
     };
 
     const formatCurrency = (val) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', minimumFractionDigits: 2 }).format(val || 0);
@@ -219,7 +259,50 @@ export default function DailyIncomePage() {
                                             <td className={styles.boldCell}>{p.patientName}</td>
                                             <td className={styles.treatmentCell}>{p.treatment}</td>
                                             <td>
-                                                <span className={styles.doctorBadge}>{p.attendingDoctor}</span>
+                                                {editingPaymentId === p.id ? (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <select
+                                                            value={editDoctorId}
+                                                            onChange={(e) => setEditDoctorId(e.target.value)}
+                                                            style={{ padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.85rem', width: '140px' }}
+                                                            disabled={isSavingDoctor}
+                                                        >
+                                                            <option value="">Sin asignar (Usar Filiciación)</option>
+                                                            {allDoctors.map(d => (
+                                                                <option key={d.id} value={d.id}>{d.name}</option>
+                                                            ))}
+                                                        </select>
+                                                        <button 
+                                                            onClick={() => handleSaveDoctor(p.id)} 
+                                                            disabled={isSavingDoctor}
+                                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#10b981', padding: '2px' }}
+                                                            title="Guardar"
+                                                        >
+                                                            <Check size={16} />
+                                                        </button>
+                                                        <button 
+                                                            onClick={handleCancelEdit} 
+                                                            disabled={isSavingDoctor}
+                                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '2px' }}
+                                                            title="Cancelar"
+                                                        >
+                                                            <X size={16} />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <span className={styles.doctorBadge}>{p.attendingDoctor}</span>
+                                                        {canViewGlobalFinance && (
+                                                            <button 
+                                                                onClick={() => handleEditClick(p)}
+                                                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '2px' }}
+                                                                title="Editar tratante"
+                                                            >
+                                                                <Edit2 size={14} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </td>
                                             <td>
                                                 <span className={styles.methodBadge}>{p.method}</span>

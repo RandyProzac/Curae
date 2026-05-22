@@ -1,0 +1,174 @@
+/* PrintableVoucher.module.css
+ * Styles for the printed receipt/ticket (boleta de venta).
+ * Visible ONLY when printing — hidden on screen.
+ */
+
+/* === On-screen: hidden === */
+.wrapper {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* === Print: full-width receipt === */
+@media print {
+    /* When printing a voucher, force body to behave */
+    :global(body.curae-print-voucher) {
+        visibility: visible !important;
+        background: white !important;
+        display: block !important;
+    }
+
+    /* Hide the main app root and any modals to prevent overlap */
+    :global(body.curae-print-voucher) #root,
+    :global(body.curae-print-voucher) [role="dialog"],
+    :global(body.curae-print-voucher) [data-reach-dialog-overlay] {
+        display: none !important;
+    }
+
+    /* Target the voucher container anywhere in the body */
+    :global(body.curae-print-voucher) #printable-voucher-container {
+        display: block !important;
+        visibility: visible !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 80mm !important;
+        background: white !important;
+        margin: 0 !important;
+        padding: 8px 4px !important;
+        z-index: 999999 !important;
+        opacity: 1 !important;
+    }
+
+    /* Ensure all children of the voucher are visible and styled */
+    :global(body.curae-print-voucher) #printable-voucher-container * {
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    .wrapper {
+        font-family: 'Courier New', Courier, monospace !important;
+        font-size: 11px !important;
+        color: #000 !important;
+    }
+
+    .header {
+        text-align: center;
+        margin-bottom: 6px;
+    }
+
+    .logo {
+        width: 48px;
+        height: auto;
+        margin-bottom: 4px;
+    }
+
+    .clinicName {
+        font-size: 13px;
+        font-weight: bold;
+        margin: 0 0 2px 0;
+        line-height: 1.3;
+    }
+
+    .address {
+        font-size: 10px;
+        margin: 0;
+        line-height: 1.4;
+    }
+
+    .ticketNum {
+        font-size: 10px;
+        font-weight: bold;
+        margin: 4px 0 0 0;
+    }
+
+    .divider {
+        border: none;
+        border-top: 1px dashed #000;
+        margin: 8px 0;
+    }
+
+    .section {
+        margin-bottom: 8px;
+    }
+
+    .field {
+        margin: 2px 0;
+        font-size: 10px;
+        line-height: 1.4;
+        word-break: break-word;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 6px 0;
+    }
+
+    .table thead tr {
+        border-top: 1px solid #000;
+        border-bottom: 1px solid #000;
+    }
+
+    .thCant, .thItem, .thPrice {
+        font-size: 10px;
+        font-weight: bold;
+        padding: 3px 2px;
+        text-align: left;
+    }
+
+    .thPrice {
+        text-align: right;
+    }
+
+    .tdCant {
+        width: 28px;
+        vertical-align: top;
+        padding: 3px 2px;
+        font-size: 10px;
+    }
+
+    .tdItem {
+        padding: 3px 4px;
+        font-size: 10px;
+        vertical-align: top;
+        word-break: break-word;
+    }
+
+    .tdPrice {
+        text-align: right;
+        padding: 3px 2px;
+        font-size: 10px;
+        vertical-align: top;
+        white-space: nowrap;
+    }
+
+    .table tfoot tr {
+        border-top: 1px solid #000;
+    }
+
+    .tfootLabel {
+        font-weight: bold;
+        font-size: 10px;
+        padding: 4px 2px;
+    }
+
+    .tfootValue {
+        font-weight: bold;
+        font-size: 10px;
+        text-align: right;
+        padding: 4px 2px;
+        white-space: nowrap;
+    }
+
+    .thanks {
+        text-align: center;
+        font-size: 11px;
+        margin-top: 12px;
+        font-weight: bold;
+    }
+}

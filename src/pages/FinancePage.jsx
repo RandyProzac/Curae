@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import styles from './FinancePage.module.css';
 import { financeApi, expensesApi, cashFlowApi, inventoryApi } from '../lib/supabase';
 import { useAuth } from '../contexts/useAuth';
+import VoucherHistory from '../components/vouchers/VoucherHistory';
 // import ExpenseModal from '../components/finance/ExpenseModal';
 
 // --- CONSTANTS ---
@@ -92,6 +93,7 @@ const FinancePage = () => {
     const [selectedDay, setSelectedDay] = useState(new Date());
     const [selectedMonth, setSelectedMonth] = useState(new Date());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [viewMode, setViewMode] = useState('global'); // 'global' | 'personal'
 
     // -- DATA STATE --
     const [todayMetrics, setTodayMetrics] = useState({ income: 0, expenses: 0, balance: 0 });
@@ -115,13 +117,13 @@ const FinancePage = () => {
             const dayEnd = new Date(selectedDay);
             dayEnd.setHours(23, 59, 59, 999);
 
-            const filterDocId = canViewGlobalFinance ? null : user?.id;
+            const filterDocId = canViewGlobalFinance ? (viewMode === 'global' ? null : user?.id) : user?.id;
 
             const [dayIncome, dayExpensesList] = await Promise.all([
                 financeApi.getIncomeByPeriod(dayStart.toISOString(), dayEnd.toISOString(), filterDocId),
-                filterDocId ? Promise.resolve([]) : expensesApi.getByPeriod(dayStart.toISOString(), dayEnd.toISOString())
+                expensesApi.getByPeriod(dayStart.toISOString(), dayEnd.toISOString(), filterDocId)
             ]);
-            const dayTotalExp = filterDocId ? 0 : dayExpensesList.reduce((acc, e) => acc + (parseFloat(e.amount) || 0), 0);
+            const dayTotalExp = dayExpensesList.reduce((acc, e) => acc + (parseFloat(e.amount) || 0), 0);
 
             // 2. Monthly Summary (Based on selectedMonth)
             const monthYear = selectedMonth.getFullYear();
@@ -141,7 +143,7 @@ const FinancePage = () => {
             // 4. Inventory Impact (Always current status)
             let totalInvValue = 0;
             let lowStockItems = [];
-            if (canViewGlobalFinance) {
+            if (canViewGlobalFinance && viewMode === 'global') {
                 const products = await inventoryApi.getProducts();
                 totalInvValue = products.reduce((acc, p) => acc + (p.cost * p.stock), 0);
                 lowStockItems = products.filter(p => p.stock <= p.min_stock);
@@ -187,7 +189,7 @@ const FinancePage = () => {
         } finally {
             setLoading(false);
         }
-    }, [selectedDay, selectedMonth, selectedYear, user, canViewGlobalFinance]);
+    }, [selectedDay, selectedMonth, selectedYear, user, canViewGlobalFinance, viewMode]);
 
     // Initial Load
     useEffect(() => {
@@ -216,11 +218,25 @@ const FinancePage = () => {
             {/* --- HEADER --- */}
             <header className={styles.header}>
                 <div className={styles.title}>
-                    <h2>{canViewGlobalFinance ? 'Finanzas Maestras 📊' : 'Mis Finanzas 📊'}</h2>
-                    <p>{canViewGlobalFinance ? 'Visión estratégíca de tu consultorio.' : 'Resumen de tus ingresos generados.'}</p>
+                    <h2>{canViewGlobalFinance ? (viewMode === 'global' ? 'Finanzas Maestras 📊' : 'Mis Finanzas 📊') : 'Mis Finanzas 📊'}</h2>
+                    <p>{canViewGlobalFinance ? (viewMode === 'global' ? 'Visión estratégíca de tu consultorio.' : 'Resumen de tus ingresos generados.') : 'Resumen de tus ingresos generados.'}</p>
                 </div>
                 {canViewGlobalFinance && (
-                    <div className={styles.controls}>
+                    <div className={styles.controls} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
+                            <button 
+                                onClick={() => setViewMode('global')}
+                                style={{ padding: '6px 12px', border: 'none', background: viewMode === 'global' ? 'white' : 'transparent', borderRadius: '6px', fontWeight: viewMode === 'global' ? 600 : 400, color: viewMode === 'global' ? '#0f172a' : '#64748b', boxShadow: viewMode === 'global' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+                            >
+                                🌍 Global
+                            </button>
+                            <button 
+                                onClick={() => setViewMode('personal')}
+                                style={{ padding: '6px 12px', border: 'none', background: viewMode === 'personal' ? 'white' : 'transparent', borderRadius: '6px', fontWeight: viewMode === 'personal' ? 600 : 400, color: viewMode === 'personal' ? '#0f172a' : '#64748b', boxShadow: viewMode === 'personal' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+                            >
+                                👨‍⚕️ Mis Finanzas
+                            </button>
+                        </div>
                         <button className={styles.addExpenseBtn} onClick={() => navigate('/gastos')}>
                             <ShoppingCart size={16} /> <span>Gestionar Gastos</span>
                         </button>
@@ -391,7 +407,7 @@ const FinancePage = () => {
                         </div>
 
                         {/* B. INCOME SOURCES */}
-                        {canViewGlobalFinance && (
+                        {canViewGlobalFinance && viewMode === 'global' && (
                             <div className={styles.sideCard}>
                                 <h4 className={styles.sideTitle}>Top Doctores (Ingresos)</h4>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -407,7 +423,7 @@ const FinancePage = () => {
                         )}
 
                         {/* C. EXPENSE BREAKDOWN (Simple Pie) */}
-                        {canViewGlobalFinance && (
+                        {canViewGlobalFinance && viewMode === 'global' && (
                             <div className={styles.sideCard}>
                                 <h4 className={styles.sideTitle}>Distribución de Gastos</h4>
                                 <div style={{ height: 200, width: '100%' }}>
@@ -499,6 +515,11 @@ const FinancePage = () => {
                                     <div className={styles.noResults}>No se encontraron pacientes con "{searchQuery}"</div>
                                 )}
                         </div>
+                    </div>
+
+                    {/* --- 6. VOUCHERS EMITIDOS --- */}
+                    <div style={{ gridColumn: '1 / -1' }}>
+                        <VoucherHistory />
                     </div>
                 </div>
             )}

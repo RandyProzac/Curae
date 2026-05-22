@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     ChevronDown,
     ChevronRight,
@@ -11,10 +11,17 @@ import {
     X,
     Pencil,
 } from 'lucide-react';
-import { budgetsApi, paymentsApi, doctorsApi } from '../../lib/supabase';
+import { budgetsApi, paymentsApi, doctorsApi, vouchersApi, supabase } from '../../lib/supabase';
+import { printVoucherToIframe } from '../common/PrintableVoucher';
 import ServiceSelector from '../appointments/ServiceSelector';
 import PrintableBudget from '../common/PrintableBudget';
+import MultiPaymentModal from './MultiPaymentModal';
 import { useAuth } from '../../contexts/useAuth';
+
+// ─── FEATURE FLAG ───────────────────────────────────────────────────────────
+// Set to true to re-enable the global discount UI and calculations.
+const GLOBAL_DISCOUNT_ENABLED = false;
+// ────────────────────────────────────────────────────────────────────────────
 
 /**
  * BudgetDetails
@@ -28,7 +35,7 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
 
     // New Item State
     const [newItemData, setNewItemData] = useState({
-        service: null, toothNumber: '', quantity: 1, price: 0,
+        service: null, toothNumber: '', quantity: 1, price: '',
         discount: 0, discountType: 'fixed',
     });
 
@@ -46,8 +53,11 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
 
     // Print state
     const [printingBudget, setPrintingBudget] = useState(null);
-    const [printingItemIds, setPrintingItemIds] = useState(null); // Changed to array
+    const [printingItemIds, setPrintingItemIds] = useState(null);
     const [realActiveDoctor, setRealActiveDoctor] = useState(user);
+
+    // Voucher / Multi-payment state
+    const [multiPayModal, setMultiPayModal] = useState(false);
 
     const items = budget?.items || budget?.budget_items || [];
     const [selectedForPrint, setSelectedForPrint] = useState([]);
@@ -128,10 +138,77 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
     const [editDiscountVal, setEditDiscountVal] = useState('');
     const [editDiscountType, setEditDiscountType] = useState('fixed');
 
+    // Inline Unit Price Editing
+    const [editingUnitPrice, setEditingUnitPrice] = useState(null);
+    const [editUnitPriceVal, setEditUnitPriceVal] = useState('');
+
+    // Inline Quantity Editing
+    const [editingQuantity, setEditingQuantity] = useState(null);
+    const [editQuantityVal, setEditQuantityVal] = useState('');
+
+    // Inline Global Discount Editing
+    const [editingGlobalDiscount, setEditingGlobalDiscount] = useState(false);
+    const [editGlobalDiscountVal, setEditGlobalDiscountVal] = useState('');
+    const [editGlobalDiscountType, setEditGlobalDiscountType] = useState('fixed');
+    const globalDiscountActiveRef = useRef(false);
+    // Local state so UI updates immediately without waiting for parent re-fetch
+    const [savedGlobalDiscount, setSavedGlobalDiscount] = useState(parseFloat(budget.global_discount || 0));
+    const [savedGlobalDiscountType, setSavedGlobalDiscountType] = useState(budget.global_discount_type || 'fixed');
+
     const startEditDiscount = (item) => {
         setEditingDiscount(item.id);
         setEditDiscountVal(item.discount || 0);
         setEditDiscountType(item.discount_type || 'fixed');
+    };
+
+    const startEditUnitPrice = (item) => {
+        const hasPaid = parseFloat(item.paid_amount || 0) > 0;
+        if (hasPaid) return;
+        setEditingUnitPrice(item.id);
+        setEditUnitPriceVal(parseFloat(item.unit_price) || 0);
+    };
+
+    const saveUnitPrice = async (itemId) => {
+        if (editingUnitPrice !== itemId) return;
+        const newPrice = parseFloat(editUnitPriceVal);
+        if (isNaN(newPrice) || newPrice <= 0) {
+            setEditingUnitPrice(null);
+            return;
+        }
+        try {
+            setEditingUnitPrice(null);
+            await budgetsApi.updateItem(itemId, { unit_price: newPrice });
+            onUpdate?.();
+        } catch (err) {
+            console.error('Error updating unit price:', err);
+            alert('Error al guardar el precio unitario');
+            onUpdate?.();
+        }
+    };
+
+    const startEditQuantity = (item) => {
+        const hasPaid = parseFloat(item.paid_amount || 0) > 0;
+        if (hasPaid) return;
+        setEditingQuantity(item.id);
+        setEditQuantityVal(item.quantity || 1);
+    };
+
+    const saveQuantity = async (itemId) => {
+        if (editingQuantity !== itemId) return;
+        const newQty = parseInt(editQuantityVal);
+        if (isNaN(newQty) || newQty < 1) {
+            setEditingQuantity(null);
+            return;
+        }
+        try {
+            setEditingQuantity(null);
+            await budgetsApi.updateItem(itemId, { quantity: newQty });
+            onUpdate?.();
+        } catch (err) {
+            console.error('Error updating quantity:', err);
+            alert('Error al guardar la cantidad');
+            onUpdate?.();
+        }
     };
 
     const saveDiscount = async (itemId) => {
@@ -159,7 +236,7 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
         }
     };
 
-    // Calculations
+    // Calculations — reads savedGlobalDiscount (local state) for instant UI update
     const getBudgetTotals = (items) => {
         let subtotal = 0, totalDiscount = 0, paid = 0;
         (items || []).forEach(item => {
@@ -171,12 +248,50 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
             totalDiscount += itemDiscountAmount;
             paid += parseFloat(item.paid_amount || 0);
         });
-        const total = Math.max(0, subtotal - totalDiscount);
+        const totalAfterItems = Math.max(0, subtotal - totalDiscount);
+        // Global discount — only applied when feature flag is enabled
+        const globalDiscountAmount = GLOBAL_DISCOUNT_ENABLED
+            ? (savedGlobalDiscountType === 'percent'
+                ? (totalAfterItems * savedGlobalDiscount / 100)
+                : savedGlobalDiscount)
+            : 0;
+        const total = Math.max(0, totalAfterItems - globalDiscountAmount);
         const balance = Math.max(0, total - paid);
-        return { subtotal, discountAmount: totalDiscount, total, paid, balance };
+        return { subtotal, discountAmount: totalDiscount, totalAfterItems, globalDiscountAmount, total, paid, balance };
     };
 
     const totals = getBudgetTotals(budget.items || []);
+
+    const startEditGlobalDiscount = () => {
+        globalDiscountActiveRef.current = true;
+        setEditingGlobalDiscount(true);
+        setEditGlobalDiscountVal(savedGlobalDiscount > 0 ? savedGlobalDiscount : '');
+        setEditGlobalDiscountType(savedGlobalDiscountType);
+    };
+
+    const saveGlobalDiscount = async (val, type) => {
+        if (!globalDiscountActiveRef.current) return;
+        globalDiscountActiveRef.current = false;
+        setEditingGlobalDiscount(false);
+        const numVal = parseFloat(val) || 0;
+        // Update local state immediately so UI reflects change without parent re-fetch
+        setSavedGlobalDiscount(numVal);
+        setSavedGlobalDiscountType(type);
+        try {
+            const { error } = await supabase
+                .from('budgets')
+                .update({ global_discount: numVal, global_discount_type: type })
+                .eq('id', budget.id);
+            if (error) throw error;
+            onUpdate?.(); // background sync
+        } catch (err) {
+            console.error('[GlobalDiscount] Error:', err);
+            alert('Error al guardar: ' + (err.message || JSON.stringify(err)));
+            // Revert local state on error
+            setSavedGlobalDiscount(parseFloat(budget.global_discount || 0));
+            setSavedGlobalDiscountType(budget.global_discount_type || 'fixed');
+        }
+    };
 
     // Actions
     const handleAddItem = async () => {
@@ -192,7 +307,7 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                 discount: newItemData.discount || 0,
                 discount_type: newItemData.discountType || 'fixed',
             });
-            setNewItemData({ service: null, toothNumber: '', quantity: 1, price: 0, discount: 0, discountType: 'fixed' });
+            setNewItemData({ service: null, toothNumber: '', quantity: 1, price: '', discount: 0, discountType: 'fixed' });
             setAddingItem(false);
             onUpdate?.();
         } catch (err) {
@@ -345,8 +460,40 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                                         </td>
                                         <td style={{ ...S.td, fontWeight: '600' }}>{item.service_name}</td>
                                         <td style={{ ...S.td, color: '#64748b', fontSize: '12px' }}>{item.tooth_number || '-'}</td>
-                                        <td style={{ ...S.td, fontWeight: '600', color: '#0f766e', whiteSpace: 'nowrap' }}>
-                                            S/ {parseFloat(item.unit_price).toFixed(2)}
+                                        <td style={{ ...S.td, fontWeight: '600', color: '#0f766e', whiteSpace: 'nowrap', minWidth: '110px' }}>
+                                            {editingUnitPrice === item.id ? (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                                    <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>S/</span>
+                                                    <input
+                                                        type="number" step="0.01" min="0.01"
+                                                        value={editUnitPriceVal}
+                                                        onChange={e => setEditUnitPriceVal(e.target.value)}
+                                                        onBlur={() => saveUnitPrice(item.id)}
+                                                        onKeyDown={e => {
+                                                            if (e.key === 'Enter') saveUnitPrice(item.id);
+                                                            if (e.key === 'Escape') setEditingUnitPrice(null);
+                                                        }}
+                                                        style={{ width: '70px', padding: '4px 8px', border: '1px solid #0f766e', borderRadius: '4px', fontSize: '12px', outline: 'none', color: '#0f766e', fontWeight: '600' }}
+                                                        autoFocus
+                                                    />
+                                                    <button
+                                                        onClick={() => setEditingUnitPrice(null)}
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '4px' }}
+                                                        title="Cancelar"
+                                                    >
+                                                        <X size={14} />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span
+                                                    onClick={() => startEditUnitPrice(item)}
+                                                    style={{ cursor: parseFloat(item.paid_amount || 0) > 0 ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', opacity: parseFloat(item.paid_amount || 0) > 0 ? 0.7 : 1 }}
+                                                    title={parseFloat(item.paid_amount || 0) > 0 ? 'No se puede editar: ya tiene pagos' : 'Click para editar precio unitario'}
+                                                >
+                                                    S/ {parseFloat(item.unit_price).toFixed(2)}
+                                                    {parseFloat(item.paid_amount || 0) <= 0 && <Pencil size={13} style={{ opacity: 0.5 }} />}
+                                                </span>
+                                            )}
                                         </td>
                                         <td style={{ ...S.td, fontSize: '12px', whiteSpace: 'nowrap', minWidth: '120px' }}>
                                             {editingDiscount === item.id ? (
@@ -391,7 +538,40 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                                                 </span>
                                             )}
                                         </td>
-                                        <td style={S.td}>{item.quantity}</td>
+                                        <td style={{ ...S.td, whiteSpace: 'nowrap', minWidth: '70px' }}>
+                                            {editingQuantity === item.id ? (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                                    <input
+                                                        type="number" min="1" step="1"
+                                                        value={editQuantityVal}
+                                                        onChange={e => setEditQuantityVal(e.target.value)}
+                                                        onBlur={() => saveQuantity(item.id)}
+                                                        onKeyDown={e => {
+                                                            if (e.key === 'Enter') saveQuantity(item.id);
+                                                            if (e.key === 'Escape') setEditingQuantity(null);
+                                                        }}
+                                                        style={{ width: '45px', padding: '4px 8px', border: '1px solid #0f766e', borderRadius: '4px', fontSize: '12px', outline: 'none', textAlign: 'center' }}
+                                                        autoFocus
+                                                    />
+                                                    <button
+                                                        onClick={() => setEditingQuantity(null)}
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '4px' }}
+                                                        title="Cancelar"
+                                                    >
+                                                        <X size={14} />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span
+                                                    onClick={() => startEditQuantity(item)}
+                                                    style={{ cursor: parseFloat(item.paid_amount || 0) > 0 ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', opacity: parseFloat(item.paid_amount || 0) > 0 ? 0.7 : 1 }}
+                                                    title={parseFloat(item.paid_amount || 0) > 0 ? 'No se puede editar: ya tiene pagos' : 'Click para editar cantidad'}
+                                                >
+                                                    {item.quantity}
+                                                    {parseFloat(item.paid_amount || 0) <= 0 && <Pencil size={13} style={{ opacity: 0.5 }} />}
+                                                </span>
+                                            )}
+                                        </td>
                                         <td style={{ ...S.td, fontWeight: '600' }}>S/ {rawPrice.toFixed(2)}</td>
                                         <td style={{ ...S.td, color: paid > 0 ? '#059669' : '#94a3b8' }}>
                                             {paid > 0 ? `S/ ${paid.toFixed(2)}` : '-'}
@@ -450,7 +630,7 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                                         type="number" min="1"
                                         style={{ ...S.paramInput, textAlign: 'center' }}
                                         value={newItemData.quantity}
-                                        onChange={e => setNewItemData({ ...newItemData, quantity: parseInt(e.target.value) || 1 })}
+                                        onChange={e => setNewItemData({ ...newItemData, quantity: e.target.value })}
                                     />
                                 </div>
                                 <div style={{ ...S.paramGroup, width: '90px' }}>
@@ -459,7 +639,7 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                                         type="number" step="0.01"
                                         style={S.paramInput}
                                         value={newItemData.price}
-                                        onChange={e => setNewItemData({ ...newItemData, price: parseFloat(e.target.value) || 0 })}
+                                        onChange={e => setNewItemData({ ...newItemData, price: e.target.value })}
                                     />
                                 </div>
                                 <div style={{ ...S.paramGroup, width: '130px' }}>
@@ -512,7 +692,7 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                     {/* Footer Summary */}
                     <div style={S.footer}>
                         <div style={S.footerActions}>
-                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                                 {selectedForPrint.length > 0 && (
                                     <button
                                         style={{ ...S.actionBtn, color: '#ef4444', borderColor: '#ef4444', background: '#fee2e2' }}
@@ -522,21 +702,48 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                                         Eliminar ({selectedForPrint.length})
                                     </button>
                                 )}
+                                {/* Imprimir Presupuesto (existing flow) */}
                                 <button
                                     style={{
                                         ...S.actionBtn,
                                         opacity: selectedForPrint.length === 0 ? 0.5 : 1,
                                         cursor: selectedForPrint.length === 0 ? 'not-allowed' : 'pointer',
-                                        background: selectedForPrint.length > 0 ? '#0f766e' : 'transparent',
-                                        color: selectedForPrint.length > 0 ? 'white' : '#64748b',
-                                        border: selectedForPrint.length > 0 ? 'none' : '1px solid #e2e8f0'
                                     }}
                                     onClick={() => handlePrint(budget, selectedForPrint)}
                                     disabled={selectedForPrint.length === 0}
+                                    title="Imprimir presupuesto/cotización"
                                 >
                                     <Printer size={16} />
-                                    Imprimir ({selectedForPrint.length})
+                                    Imprimir Presupuesto
                                 </button>
+                                {/* Cobrar y Generar Voucher (new flow) */}
+                                {(() => {
+                                    const pendingSelected = items.filter(it =>
+                                        selectedForPrint.includes(it.id) &&
+                                        (() => {
+                                            const raw  = parseFloat(it.unit_price) * (it.quantity || 1);
+                                            const disc = parseFloat(it.discount || 0);
+                                            const d    = it.discount_type === 'percent' ? (raw * disc / 100) : disc;
+                                            return Math.max(0, raw - d - parseFloat(it.paid_amount || 0)) > 0.001;
+                                        })()
+                                    );
+                                    return pendingSelected.length > 0 ? (
+                                        <button
+                                            id="btn-cobrar-voucher"
+                                            style={{
+                                                ...S.actionBtn,
+                                                background: 'linear-gradient(135deg, #0f766e, #134e4a)',
+                                                color: 'white',
+                                                border: 'none',
+                                                fontWeight: '700',
+                                            }}
+                                            onClick={() => setMultiPayModal(true)}
+                                        >
+                                            <DollarSign size={16} />
+                                            Cobrar ({pendingSelected.length}) y Generar Voucher
+                                        </button>
+                                    ) : null;
+                                })()}
                             </div>
                             <button
                                 style={{ ...S.actionBtn, color: '#25d366', borderColor: '#25d366' }}
@@ -560,6 +767,62 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                                 <>
                                     <span style={S.summaryLabel}>Descuento:</span>
                                     <span style={{ ...S.summaryValue, color: '#f59e0b' }}>- S/ {totals.discountAmount.toFixed(2)}</span>
+                                </>
+                            )}
+                            {/* Global Discount Row — controlled by GLOBAL_DISCOUNT_ENABLED flag */}
+                            {GLOBAL_DISCOUNT_ENABLED && (
+                                <>
+                                    <span style={{ ...S.summaryLabel, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        Dscto. Global:
+                                    </span>
+                                    <span style={{ ...S.summaryValue, color: '#e67e22' }}>
+                                        {editingGlobalDiscount ? (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '2px', justifyContent: 'flex-end' }}>
+                                                <input
+                                                    type="number" step="0.01" min="0"
+                                                    value={editGlobalDiscountVal}
+                                                    onChange={e => setEditGlobalDiscountVal(e.target.value)}
+                                                    onBlur={e => saveGlobalDiscount(e.target.value, editGlobalDiscountType)}
+                                                    onKeyDown={e => {
+                                                        if (e.key === 'Enter') saveGlobalDiscount(editGlobalDiscountVal, editGlobalDiscountType);
+                                                        if (e.key === 'Escape') {
+                                                            globalDiscountActiveRef.current = false;
+                                                            setEditingGlobalDiscount(false);
+                                                        }
+                                                    }}
+                                                    style={{ width: '60px', padding: '4px 8px', border: '1px solid #e67e22', borderRadius: '4px 0 0 4px', fontSize: '12px', borderRight: 'none', outline: 'none', textAlign: 'right' }}
+                                                    autoFocus
+                                                />
+                                                <button
+                                                    onMouseDown={(e) => {
+                                                        e.preventDefault();
+                                                        setEditGlobalDiscountType(p => p === 'fixed' ? 'percent' : 'fixed');
+                                                    }}
+                                                    style={{ padding: '4px 8px', border: '1px solid #e67e22', background: '#fef3c7', fontSize: '11px', fontWeight: '700', cursor: 'pointer', borderRadius: '0 4px 4px 0', color: '#e67e22', minWidth: '32px' }}
+                                                >
+                                                    {editGlobalDiscountType === 'percent' ? '%' : 'S/'}
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        globalDiscountActiveRef.current = false;
+                                                        setEditingGlobalDiscount(false);
+                                                    }}
+                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '4px' }}
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <span
+                                                onClick={startEditGlobalDiscount}
+                                                style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                                title="Click para editar descuento global"
+                                            >
+                                                {totals.globalDiscountAmount > 0 ? `- S/ ${totals.globalDiscountAmount.toFixed(2)}` : '-'}
+                                                <Pencil size={13} style={{ opacity: 0.6 }} />
+                                            </span>
+                                        )}
+                                    </span>
                                 </>
                             )}
                             <span style={S.summaryLabel}>Total:</span>
@@ -653,7 +916,7 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                 )
             }
 
-            {/* Hidden Printable Content */}
+            {/* Hidden Printable Budget (cotización) */}
             {printingBudget && (
                 <PrintableBudget
                     patientName={patientName}
@@ -664,6 +927,54 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                     activeDoctor={realActiveDoctor}
                 />
             )}
+
+            {/* Multi-payment modal */}
+            {multiPayModal && (() => {
+                const pendingItems = items.filter(it =>
+                    selectedForPrint.includes(it.id) &&
+                    (() => {
+                        const raw  = parseFloat(it.unit_price) * (it.quantity || 1);
+                        const disc = parseFloat(it.discount || 0);
+                        const d    = it.discount_type === 'percent' ? (raw * disc / 100) : disc;
+                        return Math.max(0, raw - d - parseFloat(it.paid_amount || 0)) > 0.001;
+                    })()
+                );
+                return (
+                    <MultiPaymentModal
+                        items={pendingItems}
+                        patient={budget.patient || { first_name: patientName?.split(' ')[0] || '', last_name: patientName?.split(' ').slice(1).join(' ') || '' }}
+                        budgetId={budget.id}
+                        doctorId={realActiveDoctor?.id || null}
+                        onClose={() => setMultiPayModal(false)}
+                        onConfirm={async ({ items: itemsPayload, paymentMethods }) => {
+                            const voucher = await vouchersApi.create({
+                                patientId: patientId,
+                                budgetId:  budget.id,
+                                doctorId:  realActiveDoctor?.id || null,
+                                items:     itemsPayload,
+                                paymentMethods,
+                            });
+                            setMultiPayModal(false);
+                            // Attach doctor info for printing
+                            const voucherForPrint = {
+                                ...voucher,
+                                patient: budget.patient || { first_name: patientName?.split(' ')[0] || '', last_name: patientName?.split(' ').slice(1).join(' ') || '', dni: '' },
+                                doctor:  realActiveDoctor ? { name: realActiveDoctor.name } : null,
+                                voucher_items: itemsPayload.map(i => ({
+                                    service_name: i.serviceName,
+                                    quantity:     i.quantity,
+                                    amount_paid:  i.amountPaid,
+                                })),
+                                voucher_payment_methods: paymentMethods,
+                            };
+                            
+                            // Call the isolated iframe print function
+                            printVoucherToIframe(voucherForPrint);
+                            onUpdate?.();
+                        }}
+                    />
+                );
+            })()}
 
             {/* Secret image preload to ensure the signature is cached before 
                 printing. Display:none causes browsers to aggressively delay 

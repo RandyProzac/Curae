@@ -14,6 +14,7 @@ import {
     ArrowUpDown
 } from 'lucide-react';
 import { expensesApi } from '../lib/supabase';
+import { useAuth } from '../contexts/useAuth';
 import ExpenseModal from '../components/finance/ExpenseModal';
 import styles from './ExpensesPage.module.css';
 
@@ -23,6 +24,8 @@ const ExpensesPage = () => {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedExpense, setSelectedExpense] = useState(null);
+    const { user, canViewGlobalFinance } = useAuth();
+    const [viewMode, setViewMode] = useState('global');
 
     // Filters
     const [searchQuery, setSearchQuery] = useState('');
@@ -37,8 +40,9 @@ const ExpensesPage = () => {
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
+            const filterDocId = canViewGlobalFinance ? (viewMode === 'global' ? null : user?.id) : user?.id;
             const [data, cats] = await Promise.all([
-                expensesApi.getByPeriod(dateRange.start, dateRange.end),
+                expensesApi.getByPeriod(dateRange.start, dateRange.end, filterDocId),
                 expensesApi.getCategories()
             ]);
             setExpenses(data);
@@ -48,13 +52,16 @@ const ExpensesPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [dateRange]);
+    }, [dateRange, canViewGlobalFinance, user, viewMode]);
 
     useEffect(() => {
         loadData();
     }, [loadData]);
 
     const handleSave = async (formData) => {
+        if (!canViewGlobalFinance && !formData.doctor_id) {
+            formData.doctor_id = user?.id;
+        }
         if (selectedExpense) {
             await expensesApi.update(selectedExpense.id, formData);
         } else {
@@ -101,12 +108,30 @@ const ExpensesPage = () => {
         <div className={styles.container}>
             <header className={styles.header}>
                 <div className={styles.title}>
-                    <h2>Gestión de Gastos 💸</h2>
+                    <h2>{canViewGlobalFinance ? (viewMode === 'global' ? 'Gastos de la Clínica 💸' : 'Mis Gastos 💸') : 'Mis Gastos 💸'}</h2>
                     <p>Control detallado de egresos y facturas.</p>
                 </div>
-                <button className={styles.addBtn} onClick={handleNew}>
-                    <Plus size={20} /> Nuevo Gasto
-                </button>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    {canViewGlobalFinance && (
+                        <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: '8px', padding: '4px' }}>
+                            <button 
+                                onClick={() => setViewMode('global')}
+                                style={{ padding: '6px 12px', border: 'none', background: viewMode === 'global' ? 'white' : 'transparent', borderRadius: '6px', fontWeight: viewMode === 'global' ? 600 : 400, color: viewMode === 'global' ? '#0f172a' : '#64748b', boxShadow: viewMode === 'global' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+                            >
+                                🌍 Global
+                            </button>
+                            <button 
+                                onClick={() => setViewMode('personal')}
+                                style={{ padding: '6px 12px', border: 'none', background: viewMode === 'personal' ? 'white' : 'transparent', borderRadius: '6px', fontWeight: viewMode === 'personal' ? 600 : 400, color: viewMode === 'personal' ? '#0f172a' : '#64748b', boxShadow: viewMode === 'personal' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+                            >
+                                👨‍⚕️ Mis Gastos
+                            </button>
+                        </div>
+                    )}
+                    <button className={styles.addBtn} onClick={handleNew}>
+                        <Plus size={20} /> Nuevo Gasto
+                    </button>
+                </div>
             </header>
 
             <div className={styles.statsGrid}>

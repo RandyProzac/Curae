@@ -125,7 +125,8 @@ export default function ClinicalHistoryLabWork({ patientId }) {
                             supplier: payload.laboratory_name || 'Laboratorio',
                             category: 'Laboratorio',
                             amount: payload.cost,
-                            status: 'pendiente'
+                            status: 'pendiente',
+                            doctor_id: payload.doctor_id || null
                         });
                     } catch (expError) {
                         console.error('Error updating automatic expense:', expError);
@@ -143,7 +144,8 @@ export default function ClinicalHistoryLabWork({ patientId }) {
                             supplier: payload.laboratory_name || 'Laboratorio',
                             category: 'Laboratorio',
                             amount: payload.cost,
-                            status: 'pendiente'
+                            status: 'pendiente',
+                            doctor_id: payload.doctor_id || null
                         });
                     } catch (expError) {
                         console.error('Error creating automatic expense:', expError);

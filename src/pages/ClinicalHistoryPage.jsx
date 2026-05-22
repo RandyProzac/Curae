@@ -8,7 +8,8 @@ import {
     DollarSign,
     ClipboardList,
     AlertTriangle,
-    Info
+    Info,
+    Receipt
 } from 'lucide-react'
 import { supabase, odontogramApi } from '../lib/supabase'
 
@@ -19,6 +20,7 @@ import ClinicalHistoryBudget from '../components/clinical-history/ClinicalHistor
 import TreatmentPlans from '../components/clinical-history/TreatmentPlans'
 import ClinicalHistoryLabWork from '../components/clinical-history/ClinicalHistoryLabWork'
 import ClinicalHistoryConsents from '../components/clinical-history/ClinicalHistoryConsents'
+import VoucherHistory from '../components/vouchers/VoucherHistory'
 
 import styles from '../components/clinical-history/ClinicalHistory.module.css'
 
@@ -349,6 +351,13 @@ export default function ClinicalHistoryPage() {
                     <ImageIcon size={16} />
                     <span>Imágenes Generales</span>
                 </div>
+                <div
+                    className={`${styles.tab} ${activeTab === 'VOUCHERS' ? styles.active : ''}`}
+                    onClick={() => setActiveTab('VOUCHERS')}
+                >
+                    <Receipt size={16} />
+                    <span>Vouchers</span>
+                </div>
 
             </div>
 
@@ -420,6 +429,12 @@ export default function ClinicalHistoryPage() {
                                 <ClinicalHistoryGallery patientId={patientId} />
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {activeTab === 'VOUCHERS' && (
+                    <div className={styles.content}>
+                        <VoucherHistory patientId={patientId} compact={true} />
                     </div>
                 )}
 
