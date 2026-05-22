@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Receipt, Printer, Calendar, Search, ChevronDown, ChevronUp } from 'lucide-react';
+import { Receipt, Printer, Calendar, Search, ChevronDown, ChevronUp, Trash2, AlertCircle } from 'lucide-react';
 import { vouchersApi } from '../../lib/supabase';
 import { printVoucherToIframe } from '../common/PrintableVoucher';
 
@@ -69,7 +69,7 @@ export default function VoucherHistory({ patientId = null, compact = false }) {
     const [loading, setLoading]   = useState(false);
     const [search, setSearch]     = useState('');
     const [sort, setSort]         = useState({ col: 'created_at', asc: false });
-    const [printVoucher, setPrintVoucher] = useState(null);
+    const [voucherToDelete, setVoucherToDelete] = useState(null);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -103,6 +103,22 @@ export default function VoucherHistory({ patientId = null, compact = false }) {
         } catch (err) {
             console.error('Error reprinting voucher:', err);
             alert("Error al cargar el voucher para imprimir.");
+        }
+    };
+
+    const handleDelete = (voucher) => {
+        setVoucherToDelete(voucher);
+    };
+
+    const confirmDelete = async () => {
+        if (!voucherToDelete) return;
+        try {
+            await vouchersApi.delete(voucherToDelete.id);
+            setVoucherToDelete(null);
+            load(); // Reload the list
+        } catch (err) {
+            console.error('Error deleting voucher:', err);
+            alert("Error al eliminar el voucher.");
         }
     };
 
@@ -240,14 +256,22 @@ export default function VoucherHistory({ patientId = null, compact = false }) {
                                                 </div>
                                             </td>
                                             <td style={S.td}>
-                                                <button
-                                                    id={`btn-reprint-${v.id}`}
-                                                    style={S.printBtn}
-                                                    onClick={() => handleReprint(v)}
-                                                    title="Reimprimir voucher"
-                                                >
-                                                    <Printer size={13} /> Reimprimir
-                                                </button>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <button
+                                                        onClick={() => handleReprint(v)}
+                                                        style={{ ...S.actionBtn, color: '#0f766e', borderColor: '#ccfbf1', background: '#f0fdfa' }}
+                                                        title="Reimprimir Voucher"
+                                                    >
+                                                        <Printer size={16} /> Reimprimir
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(v)}
+                                                        style={{ ...S.actionBtn, color: '#e11d48', borderColor: '#ffe4e6', background: '#fff1f2' }}
+                                                        title="Eliminar Voucher"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -269,7 +293,49 @@ export default function VoucherHistory({ patientId = null, compact = false }) {
                 </>
             )}
 
-            {/* Reprint portal removed - now using iframe */}
+            {/* Delete Confirmation Modal */}
+            {voucherToDelete && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+                    <div style={{ background: 'white', borderRadius: '12px', width: '450px', maxWidth: '90%', padding: '24px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', color: '#e11d48' }}>
+                            <AlertCircle size={24} />
+                            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#0f172a' }}>Eliminar Voucher</h3>
+                        </div>
+                        <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#475569', lineHeight: '1.5' }}>
+                            ¿Estás seguro que deseas eliminar el voucher <strong>B{String(voucherToDelete.ticket_number ?? '').padStart(8, '0')}</strong>?
+                        </p>
+                        
+                        <div style={{ background: '#fef2f2', border: '1px solid #fecdd3', borderRadius: '8px', padding: '14px', marginBottom: '24px', fontSize: '13px', color: '#9f1239' }}>
+                            <strong>Esta acción:</strong>
+                            <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', lineHeight: '1.6' }}>
+                                <li>Eliminará el registro del voucher del sistema.</li>
+                                <li>Eliminará los pagos asociados en los reportes de Finanzas.</li>
+                                <li><strong>Revertirá el saldo pagado</strong> en los tratamientos del paciente (volverán a estar pendientes).</li>
+                            </ul>
+                            <p style={{ marginTop: '12px', marginBottom: 0, fontWeight: '700' }}>Esta acción NO se puede deshacer.</p>
+                        </div>
+                        
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                            <button 
+                                onClick={() => setVoucherToDelete(null)} 
+                                style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', background: 'white', color: '#475569', fontWeight: '500', cursor: 'pointer', transition: 'background 0.15s' }}
+                                onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
+                                onMouseOut={e => e.currentTarget.style.background = 'white'}
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                onClick={confirmDelete} 
+                                style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', background: '#e11d48', color: 'white', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'background 0.15s' }}
+                                onMouseOver={e => e.currentTarget.style.background = '#be123c'}
+                                onMouseOut={e => e.currentTarget.style.background = '#e11d48'}
+                            >
+                                <Trash2 size={16} /> Sí, eliminar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

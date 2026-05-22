@@ -20,17 +20,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // ============================================
 // CLINICAL NOTES (Bitácora de Evolución)
 // ============================================
-// This section seems to have a syntax error in the original document.
-// Assuming it was meant to be a method within an object, or a placeholder.
-// Correcting the syntax to be a valid block, or removing if it's just a fragment.
-// Given the context, it looks like a fragment of a method that was cut off.
-// Removing the malformed fragment.
-// Original fragment:
-//             .eq('id', id);
-// if (error) throw error;
-//     }
-// };
-// This fragment is not part of any valid object or function. Removing it.
 
 // ============================================
 // DOCTORS
@@ -755,6 +744,53 @@ export const vouchersApi = {
             .single();
         if (error) throw error;
         return data;
+    },
+
+    /** Delete a voucher and reverse all its effects */
+    async delete(voucherId) {
+        // 1. Fetch voucher to know what to reverse
+        const { data: voucher, error: getErr } = await supabase
+            .from('vouchers')
+            .select('*, voucher_items(*)')
+            .eq('id', voucherId)
+            .single();
+        if (getErr) throw getErr;
+
+        // 2. Revert budget_items paid_amount
+        for (const item of voucher.voucher_items) {
+            if (!item.budget_item_id) continue;
+            
+            const { data: bi } = await supabase
+                .from('budget_items')
+                .select('paid_amount')
+                .eq('id', item.budget_item_id)
+                .single();
+                
+            if (bi) {
+                const newPaid = Math.max(0, parseFloat(bi.paid_amount || 0) - parseFloat(item.amount_paid || 0));
+                await supabase
+                    .from('budget_items')
+                    .update({ paid_amount: newPaid })
+                    .eq('id', item.budget_item_id);
+            }
+        }
+
+        // 3. Delete associated payments created for compatibility
+        const ticketStr = String(voucher.ticket_number).padStart(8, '0');
+        const notesStr = `Voucher #${ticketStr}`;
+        await supabase
+            .from('payments')
+            .delete()
+            .like('notes', `%${notesStr}%`);
+
+        // 4. Delete the voucher (items and payment_methods cascade)
+        const { error: delErr } = await supabase
+            .from('vouchers')
+            .delete()
+            .eq('id', voucherId);
+        if (delErr) throw delErr;
+        
+        return true;
     },
 };
 
