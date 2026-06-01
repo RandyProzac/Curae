@@ -802,12 +802,12 @@ const AppointmentsPage = () => {
                     ? `${savedData.patient.first_name} ${savedData.patient.last_name}`.trim()
                     : (`${newAppointment.newPatientName || ''} ${newAppointment.newPatientLastName || ''}`).trim() || 'Sin paciente';
 
-                // Determine emergency prefix
-                const summaryPrefix = savedData.is_emergency ? '[🚨 EMERGENCIA] - ' : '';
+                // Determine emergency prefix - use just the emoji to prevent triggering Google's illustrations
+                const summaryPrefix = savedData.is_emergency ? '[🚨] ' : '';
 
                 const gcalPayload = {
                     id: savedData.id,
-                    summary: `${summaryPrefix}Paciente: ${gcalPatientName} - Doctor(a) ${doctorToSync?.name || 'Varios'}`,
+                    summary: `${summaryPrefix}${gcalPatientName}`,
                     patient_name: gcalPatientName,
                     date: savedData.date,
                     start_time: savedData.start_time,
