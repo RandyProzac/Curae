@@ -1,127 +1,130 @@
+/**
+ * update_gcal_future_titles.cjs
+ *
+ * Limpia TODOS los eventos futuros de Google Calendar que contengan el prefijo
+ * "Paciente:" en el título. Esto incluye:
+ *   1. Citas ligadas a la BD (via google_calendar_event_id)
+ *   2. Eventos huérfanos directamente en Google Calendar
+ *
+ * Uso: node scripts/update_gcal_future_titles.cjs
+ */
+
 const { createClient } = require('@supabase/supabase-js');
-const dotenv = require('dotenv');
-dotenv.config({ path: '.env' });
+require('dotenv').config({ path: '.env' });
 
-const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY);
+const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_SERVICE_ROLE_KEY);
+const GOOGLE_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.VITE_GOOGLE_CLIENT_SECRET;
 
-async function run() {
-    console.log('Iniciando actualización de títulos de eventos futuros en Google Calendar...');
-    
-    // 1. Obtener integración de Google Calendar para el token
-    const { data: integ, error: dbErr } = await supabase
-        .from('integrations')
-        .select('*')
-        .eq('provider', 'google_calendar')
-        .maybeSingle();
-
-    if (dbErr || !integ || !integ.access_token) {
-        console.error('Error al obtener la integración de Google Calendar:', dbErr || 'No conectado');
-        return;
-    }
-
-    let accessToken = integ.access_token;
-    const now = Date.now();
-
-    // 2. Refrescar token si está por expirar
-    if (integ.expiry_date && (now + 5 * 60 * 1000) > integ.expiry_date) {
-        console.log('Token de Google expirado o por expirar. Refrescando...');
-        if (!integ.refresh_token) {
-            console.error('No hay refresh_token guardado. Vuelve a conectar Google Calendar en la app.');
-            return;
-        }
-
-        const payload = new URLSearchParams({
-            client_id: process.env.VITE_GOOGLE_CLIENT_ID,
-            client_secret: process.env.VITE_GOOGLE_CLIENT_SECRET,
+async function getToken() {
+    const { data: integ } = await supabase.from('integrations').select('*').eq('provider', 'google_calendar').maybeSingle();
+    if (!integ || !integ.refresh_token) throw new Error('No refresh token in integrations table. Reconnect Google Calendar in app.');
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            client_id: GOOGLE_CLIENT_ID,
+            client_secret: GOOGLE_CLIENT_SECRET,
             refresh_token: integ.refresh_token,
-            grant_type: 'refresh_token',
-        });
-
-        const res = await fetch('https://oauth2.googleapis.com/token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: payload.toString()
-        });
-
-        const data = await res.json();
-        if (!res.ok) {
-            console.error('Error al refrescar token de Google:', data);
-            return;
-        }
-
-        accessToken = data.access_token;
-        const newExpiry = Date.now() + (data.expires_in * 1000);
-
-        // Guardar nuevo token en la BD
-        await supabase
-            .from('integrations')
-            .update({
-                access_token: accessToken,
-                expiry_date: newExpiry,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', integ.id);
-
-        console.log('Token refrescado y guardado con éxito.');
-    }
-
-    // 3. Obtener citas futuras (a partir del 1 de Junio de 2026) que estén sincronizadas con Google Calendar
-    const { data: appointments, error: aptErr } = await supabase
-        .from('appointments')
-        .select('*, patient:patients(first_name, last_name), doctor:doctors(google_calendar_id, name)')
-        .gte('date', '2026-06-01')
-        .not('google_calendar_event_id', 'is', null);
-
-    if (aptErr) {
-        console.error('Error al obtener citas de la base de datos:', aptErr);
-        return;
-    }
-
-    console.log(`Se encontraron ${appointments.length} citas futuras sincronizadas.`);
-
-    let updatedCount = 0;
-    let failedCount = 0;
-
-    for (const apt of appointments) {
-        const calendarId = apt.doctor?.google_calendar_id || 'primary';
-        const eventId = apt.google_calendar_event_id;
-        const patientName = apt.patient ? `${apt.patient.first_name || ''} ${apt.patient.last_name || ''}`.trim() : 'Sin paciente';
-        
-        // Formato limpio: solo el emoji de emergencia si corresponde, y el nombre directo
-        const summaryPrefix = apt.is_emergency ? '[🚨] ' : '';
-        const newSummary = `${summaryPrefix}${patientName}`;
-
-        console.log(`[⚙️] Actualizando Cita ID ${apt.id}: "${newSummary}" (Calendario: ${apt.doctor?.name || 'Varios'})`);
-
-        try {
-            const patchRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    summary: newSummary
-                })
-            });
-
-            if (patchRes.ok) {
-                console.log(`[✅] Cita ID ${apt.id} actualizada con éxito en Google Calendar.`);
-                updatedCount++;
-            } else {
-                const errData = await patchRes.json();
-                console.warn(`[❌] Error al actualizar Cita ID ${apt.id}:`, errData.error?.message || 'Error desconocido');
-                failedCount++;
-            }
-        } catch (fetchErr) {
-            console.error(`[❌] Excepción de red al actualizar Cita ID ${apt.id}:`, fetchErr.message);
-            failedCount++;
-        }
-    }
-
-    console.log(`\n¡Proceso completado!`);
-    console.log(`Citas actualizadas con éxito: ${updatedCount}`);
-    console.log(`Citas fallidas o no encontradas en Google Calendar: ${failedCount}`);
+            grant_type: 'refresh_token'
+        }).toString()
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Token refresh failed');
+    return data.access_token;
 }
 
-run();
+async function patchEvent(token, calendarId, eventId, newSummary) {
+    const res = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
+        {
+            method: 'PATCH',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ summary: newSummary })
+        }
+    );
+    return res.ok;
+}
+
+async function run() {
+    console.log('====================================================');
+    console.log(' Limpiador de títulos de Google Calendar - Curae');
+    console.log('====================================================\n');
+
+    const token = await getToken();
+    const today = new Date().toISOString().split('T')[0];
+    let totalUpdated = 0;
+    let totalFailed = 0;
+
+    // ── PASO 1: Citas enlazadas en la BD ──────────────────────────────────
+    console.log('PASO 1: Corrigiendo citas enlazadas en base de datos...\n');
+    const { data: appointments, error } = await supabase
+        .from('appointments')
+        .select('*, patient:patients(first_name, last_name), doctor:doctors(google_calendar_id, name)')
+        .gte('date', today)
+        .not('google_calendar_event_id', 'is', null);
+
+    if (error) {
+        console.error('Error fetching appointments:', error);
+    } else {
+        console.log(`Encontradas ${appointments.length} citas futuras con Google Calendar Event ID.\n`);
+        for (const apt of appointments) {
+            const calendarId = apt.doctor?.google_calendar_id || 'primary';
+            const patientName = apt.patient ? `${apt.patient.first_name} ${apt.patient.last_name}`.trim() : 'Sin paciente';
+            const newSummary = apt.is_emergency ? `[🚨] ${patientName}` : patientName;
+
+            const ok = await patchEvent(token, calendarId, apt.google_calendar_event_id, newSummary);
+            if (ok) {
+                console.log(`  [OK] "${newSummary}" — ${apt.date} ${apt.start_time?.slice(0,5)}`);
+                totalUpdated++;
+            } else {
+                console.warn(`  [ERROR] ID ${apt.id}`);
+                totalFailed++;
+            }
+        }
+    }
+
+    // ── PASO 2: Eventos huérfanos con "Paciente:" en el título ────────────
+    console.log('\nPASO 2: Buscando eventos huérfanos con "Paciente:" en el título...\n');
+    const { data: doctors } = await supabase.from('doctors').select('id, name, google_calendar_id').not('google_calendar_id', 'is', null);
+
+    const timeMin = new Date(today).toISOString();
+    const timeMax = new Date(new Date(today).setMonth(new Date(today).getMonth() + 3)).toISOString();
+
+    for (const doc of (doctors || [])) {
+        const q = new URLSearchParams({ timeMin, timeMax, q: 'Paciente:', singleEvents: 'true', maxResults: 100 });
+        const evRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(doc.google_calendar_id)}/events?${q}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!evRes.ok) continue;
+
+        const evData = await evRes.json();
+        const orphans = (evData.items || []).filter(ev => ev.summary && ev.summary.includes('Paciente:'));
+
+        if (orphans.length === 0) continue;
+        console.log(`  [${doc.name}] ${orphans.length} eventos huérfanos encontrados.`);
+
+        for (const ev of orphans) {
+            // Extract patient name: "Paciente: NOMBRE - Doctor(a) ..." → "NOMBRE"
+            const match = ev.summary.match(/Paciente:\s*(.+?)(?:\s*-\s*Doctor\(a\).*)?$/i);
+            const cleanName = match ? match[1].trim() : ev.summary;
+            const ok = await patchEvent(token, doc.google_calendar_id, ev.id, cleanName);
+            if (ok) {
+                console.log(`    [OK] "${cleanName}" — ${ev.start?.dateTime || ev.start?.date}`);
+                totalUpdated++;
+            } else {
+                console.warn(`    [ERROR] Event ID ${ev.id}`);
+                totalFailed++;
+            }
+        }
+    }
+
+    console.log('\n====================================================');
+    console.log(` COMPLETADO: ${totalUpdated} corregidos, ${totalFailed} fallidos.`);
+    console.log('====================================================');
+}
+
+run().catch(err => {
+    console.error('Fatal error:', err.message);
+    process.exit(1);
+});
