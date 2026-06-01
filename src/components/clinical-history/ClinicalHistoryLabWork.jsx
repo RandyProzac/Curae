@@ -21,8 +21,8 @@ export default function ClinicalHistoryLabWork({ patientId }) {
         expected_receive_date: '',
         actual_receive_date: '',
         status: 'ENVIADO',
-        cost: 0,
-        price: 0,
+        cost: '',
+        price: '',
         notes: '',
         doctor_id: ''
     });
@@ -71,8 +71,8 @@ export default function ClinicalHistoryLabWork({ patientId }) {
                 expected_receive_date: work.expected_receive_date || '',
                 actual_receive_date: work.actual_receive_date || '',
                 status: work.status,
-                cost: work.cost,
-                price: work.price,
+                cost: work.cost || '',
+                price: work.price || '',
                 notes: work.notes || '',
                 doctor_id: work.doctor_id || ''
             });
@@ -87,8 +87,8 @@ export default function ClinicalHistoryLabWork({ patientId }) {
                 expected_receive_date: '',
                 actual_receive_date: '',
                 status: 'ENVIADO',
-                cost: 0,
-                price: 0,
+                cost: '',
+                price: '',
                 notes: ''
             }));
         }
@@ -105,6 +105,8 @@ export default function ClinicalHistoryLabWork({ patientId }) {
             const payload = {
                 patient_id: patientId,
                 ...formData,
+                cost: parseFloat(formData.cost) || 0,
+                price: parseFloat(formData.price) || 0,
                 expected_receive_date: formData.expected_receive_date || null,
                 actual_receive_date: formData.actual_receive_date || null,
                 doctor_id: formData.doctor_id || null
@@ -361,11 +363,11 @@ export default function ClinicalHistoryLabWork({ patientId }) {
                         <div style={styles.row}>
                             <div style={{ ...styles.fieldGroup, flex: 1 }}>
                                 <label style={styles.label}>Costo Laboratorio (S/)</label>
-                                <input type="number" step="0.01" style={styles.input} value={formData.cost} onChange={e => setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })} />
+                                <input type="number" step="0.01" style={styles.input} value={formData.cost} onChange={e => setFormData({ ...formData, cost: e.target.value })} />
                             </div>
                             <div style={{ ...styles.fieldGroup, flex: 1 }}>
                                 <label style={styles.label}>Precio al Paciente (S/)</label>
-                                <input type="number" step="0.01" style={styles.input} value={formData.price} onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })} />
+                                <input type="number" step="0.01" style={styles.input} value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} />
                             </div>
                         </div>
 

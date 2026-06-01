@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Calendar, Search, Users, CalendarDays } from 'lucide-react';
 import { financeApi } from '../lib/supabase';
+import { useAuth } from '../contexts/useAuth';
 import styles from './MonthlyIncomePage.module.css';
 
 export default function MonthlyIncomePage() {
@@ -9,6 +10,9 @@ export default function MonthlyIncomePage() {
     const location = useLocation();
     const query = new URLSearchParams(location.search);
     const dateParam = query.get('month'); // YYYY-MM format
+    const viewModeParam = query.get('viewMode') || 'global';
+    
+    const { user, canViewGlobalFinance } = useAuth();
 
     const [selectedMonth, setSelectedMonth] = useState(() => {
         if (dateParam) {
@@ -35,7 +39,9 @@ export default function MonthlyIncomePage() {
             const endOfMonth = new Date(dateObj.getFullYear(), dateObj.getMonth() + 1, 0);
             endOfMonth.setHours(23, 59, 59, 999);
 
-            const summarizedData = await financeApi.getMonthlyIncomeDetails(startOfMonth.toISOString(), endOfMonth.toISOString());
+            const filterDocId = canViewGlobalFinance ? (viewModeParam === 'global' ? null : user?.id) : user?.id;
+
+            const summarizedData = await financeApi.getMonthlyIncomeDetails(startOfMonth.toISOString(), endOfMonth.toISOString(), filterDocId);
 
             setPatientTotals(summarizedData.byPatient || []);
             setDayTotals(summarizedData.byDay || []);

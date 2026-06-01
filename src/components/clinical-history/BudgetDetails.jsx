@@ -58,6 +58,8 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
 
     // Voucher / Multi-payment state
     const [multiPayModal, setMultiPayModal] = useState(false);
+    const [editVoucherData, setEditVoucherData] = useState(null);
+    const [isEditingVoucher, setIsEditingVoucher] = useState(false);
 
     const items = budget?.items || budget?.budget_items || [];
     const [selectedForPrint, setSelectedForPrint] = useState([]);
@@ -338,6 +340,46 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
         });
     };
 
+    const handleEditPaidVoucher = async (item) => {
+        try {
+            setIsEditingVoucher(true);
+            
+            // 1. Try to find if this item is part of a voucher
+            const { data: viData, error: viErr } = await supabase
+                .from('voucher_items')
+                .select('voucher_id')
+                .eq('budget_item_id', item.id)
+                .limit(1);
+                
+            if (viData && viData.length > 0) {
+                // It's a voucher! Fetch the full voucher
+                const voucherId = viData[0].voucher_id;
+                const { data: voucher, error: vErr } = await supabase
+                    .from('vouchers')
+                    .select('*, voucher_items(*), voucher_payment_methods(*)')
+                    .eq('id', voucherId)
+                    .single();
+                    
+                if (voucher) {
+                    setEditVoucherData({
+                        mode: 'edit',
+                        oldVoucherId: voucherId,
+                        voucher: voucher
+                    });
+                    setMultiPayModal(true);
+                }
+            } else {
+                // Legacy payment or no voucher
+                alert('Este pago es muy antiguo o no se generó como Voucher. Por favor anúlelo manualmente o contacte a soporte si necesita editarlo.');
+            }
+        } catch (error) {
+            console.error('Error fetching voucher for edit:', error);
+            alert('No se pudo cargar la información del pago.');
+        } finally {
+            setIsEditingVoucher(false);
+        }
+    };
+
     const handlePayment = async () => {
         const amount = parseFloat(paymentAmount);
         const item = paymentModal.item;
@@ -360,12 +402,23 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
 
         try {
             setIsPaying(true);
-            await paymentsApi.create({
-                budget_item_id: item.id,
-                amount,
-                method: paymentMethod,
-                doctor_id: paymentDoctorId || null,
-                notes: paymentNotes || null,
+            
+            // Create a voucher instead of a single payment so it can be edited later
+            await vouchersApi.create({
+                patientId: patientId,
+                budgetId: budget.id,
+                doctorId: paymentDoctorId || null,
+                items: [{
+                    budgetItemId: item.id,
+                    serviceName: item.treatment_name || item.description || 'Tratamiento',
+                    quantity: item.quantity || 1,
+                    unitPrice: item.unit_price,
+                    amountPaid: amount
+                }],
+                paymentMethods: [{
+                    method: paymentMethod,
+                    amount: amount
+                }]
             });
 
             setPaymentModal({ open: false, item: null });
@@ -582,16 +635,45 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
                                         <td style={S.td}>
                                             <div style={{ display: 'flex', gap: '4px' }}>
                                                 {remaining > 0 ? (
-                                                    <button
-                                                        style={S.payBtn}
-                                                        onClick={() => {
-                                                            setPaymentModal({ open: true, item });
-                                                            setPaymentAmount(remaining.toFixed(2));
-                                                            setPaymentDoctorId(item.doctor_id || user?.id || '');
-                                                        }}
-                                                    >Pagar</button>
+                                                    <>
+                                                        <button
+                                                            style={S.payBtn}
+                                                            onClick={() => {
+                                                                setPaymentModal({ open: true, item });
+                                                                setPaymentAmount(remaining.toFixed(2));
+                                                                setPaymentDoctorId(item.doctor_id || user?.id || '');
+                                                            }}
+                                                        >Pagar</button>
+                                                        {paid > 0 && (
+                                                            <button
+                                                                style={{
+                                                                    padding: '4px 10px',
+                                                                    border: '1px solid #cbd5e1',
+                                                                    borderRadius: '6px',
+                                                                    cursor: isEditingVoucher ? 'wait' : 'pointer',
+                                                                    fontSize: '12px',
+                                                                    fontWeight: '600',
+                                                                    color: '#475569',
+                                                                    background: '#f1f5f9',
+                                                                    fontFamily: 'inherit'
+                                                                }}
+                                                                onClick={() => handleEditPaidVoucher(item)}
+                                                                disabled={isEditingVoucher}
+                                                                title="Editar el voucher del pago parcial"
+                                                            >
+                                                                Editar
+                                                            </button>
+                                                        )}
+                                                    </>
                                                 ) : (
-                                                    <span style={S.paidBadge}>✓ Pagado</span>
+                                                    <button 
+                                                        style={{...S.paidBadge, border: 'none', cursor: isEditingVoucher ? 'wait' : 'pointer', fontFamily: 'inherit'}} 
+                                                        onClick={() => handleEditPaidVoucher(item)}
+                                                        disabled={isEditingVoucher}
+                                                        title="Clic para editar el voucher de pago"
+                                                    >
+                                                        ✓ Pagado
+                                                    </button>
                                                 )}
                                             </div>
                                         </td>
@@ -930,36 +1012,56 @@ export default function BudgetDetails({ budget, patientId, patientName, patientP
 
             {/* Multi-payment modal */}
             {multiPayModal && (() => {
-                const pendingItems = items.filter(it =>
-                    selectedForPrint.includes(it.id) &&
-                    (() => {
-                        const raw  = parseFloat(it.unit_price) * (it.quantity || 1);
-                        const disc = parseFloat(it.discount || 0);
-                        const d    = it.discount_type === 'percent' ? (raw * disc / 100) : disc;
-                        return Math.max(0, raw - d - parseFloat(it.paid_amount || 0)) > 0.001;
-                    })()
-                );
+                const pendingItems = editVoucherData
+                    ? items.filter(it => editVoucherData.voucher.voucher_items.some(vi => vi.budget_item_id === it.id))
+                    : items.filter(it =>
+                        selectedForPrint.includes(it.id) &&
+                        (() => {
+                            const raw  = parseFloat(it.unit_price) * (it.quantity || 1);
+                            const disc = parseFloat(it.discount || 0);
+                            const d    = it.discount_type === 'percent' ? (raw * disc / 100) : disc;
+                            return Math.max(0, raw - d - parseFloat(it.paid_amount || 0)) > 0.001;
+                        })()
+                    );
                 return (
                     <MultiPaymentModal
                         items={pendingItems}
+                        editVoucherData={editVoucherData}
                         patient={budget.patient || { first_name: patientName?.split(' ')[0] || '', last_name: patientName?.split(' ').slice(1).join(' ') || '' }}
                         budgetId={budget.id}
                         doctorId={realActiveDoctor?.id || null}
-                        onClose={() => setMultiPayModal(false)}
-                        onConfirm={async ({ items: itemsPayload, paymentMethods }) => {
-                            const voucher = await vouchersApi.create({
+                        doctorsList={doctorsList}
+                        onClose={() => {
+                            setMultiPayModal(false);
+                            setEditVoucherData(null);
+                        }}
+                        onConfirm={async ({ items: itemsPayload, paymentMethods, doctorId }) => {
+                            const voucherData = {
                                 patientId: patientId,
                                 budgetId:  budget.id,
-                                doctorId:  realActiveDoctor?.id || null,
+                                doctorId:  doctorId || null,
                                 items:     itemsPayload,
                                 paymentMethods,
-                            });
+                            };
+                            
+                            let voucher;
+                            if (editVoucherData) {
+                                voucher = await vouchersApi.replace(editVoucherData.oldVoucherId, voucherData);
+                            } else {
+                                voucher = await vouchersApi.create(voucherData);
+                            }
+                            
                             setMultiPayModal(false);
+                            setEditVoucherData(null);
+                            
+                            // Find the doctor name for the print view
+                            const selectedDoctor = doctorsList.find(d => d.id === doctorId) || realActiveDoctor;
+
                             // Attach doctor info for printing
                             const voucherForPrint = {
                                 ...voucher,
                                 patient: budget.patient || { first_name: patientName?.split(' ')[0] || '', last_name: patientName?.split(' ').slice(1).join(' ') || '', dni: '' },
-                                doctor:  realActiveDoctor ? { name: realActiveDoctor.name } : null,
+                                doctor:  selectedDoctor ? { name: selectedDoctor.name } : null,
                                 voucher_items: itemsPayload.map(i => ({
                                     service_name: i.serviceName,
                                     quantity:     i.quantity,

@@ -688,6 +688,61 @@ export const vouchersApi = {
         return voucher;
     },
 
+    /**
+     * Replace an existing voucher with a new one (used for editing).
+     * 1. Reverts `paid_amount` on `budget_items`
+     * 2. Deletes associated `payments` (using the ticket number note)
+     * 3. Deletes `voucher_items`, `voucher_payment_methods`, and the `vouchers` header.
+     * 4. Creates a new voucher using `create()`
+     */
+    async replace(oldVoucherId, newVoucherData) {
+        // 1. Fetch old voucher data
+        const { data: oldVoucher, error: fetchErr } = await supabase
+            .from('vouchers')
+            .select('*, voucher_items(*)')
+            .eq('id', oldVoucherId)
+            .single();
+            
+        if (fetchErr) throw fetchErr;
+        
+        // 2. Revert paid_amount on budget_items
+        for (const item of oldVoucher.voucher_items) {
+            const amountToRevert = parseFloat(item.amount_paid || 0);
+            if (amountToRevert <= 0) continue;
+            
+            const { data: bi } = await supabase
+                .from('budget_items')
+                .select('paid_amount')
+                .eq('id', item.budget_item_id)
+                .single();
+                
+            if (bi) {
+                const revertedPaid = Math.max(0, parseFloat(bi.paid_amount || 0) - amountToRevert);
+                await supabase
+                    .from('budget_items')
+                    .update({ paid_amount: revertedPaid })
+                    .eq('id', item.budget_item_id);
+            }
+        }
+        
+        // 3. Delete from payments table using the ticket number note
+        const noteString = `Voucher #${String(oldVoucher.ticket_number).padStart(8, '0')}`;
+        await supabase
+            .from('payments')
+            .delete()
+            .eq('notes', noteString);
+            
+        // 4. Delete voucher_payment_methods and voucher_items
+        await supabase.from('voucher_payment_methods').delete().eq('voucher_id', oldVoucherId);
+        await supabase.from('voucher_items').delete().eq('voucher_id', oldVoucherId);
+        
+        // 5. Delete voucher header
+        await supabase.from('vouchers').delete().eq('id', oldVoucherId);
+        
+        // 6. Create the new voucher
+        return await this.create(newVoucherData);
+    },
+
     /** Get all vouchers for a patient with full details */
     async getByPatient(patientId) {
         const { data, error } = await supabase
@@ -987,7 +1042,7 @@ export const financeApi = {
     /**
      * Get monthly income summarized per patient
      */
-    async getMonthlyIncomeDetails(startDate, endDate) {
+    async getMonthlyIncomeDetails(startDate, endDate, doctorId = null) {
         let query = supabase
             .from('payments')
             .select(`
@@ -995,11 +1050,13 @@ export const financeApi = {
                 amount,
                 created_at,
                 budget_item:budget_items (
+                    doctor_id,
                     budget:budgets (
                         patient:patients (
                             id,
                             first_name,
-                            last_name
+                            last_name,
+                            doctor_id
                         )
                     )
                 )
@@ -1015,11 +1072,20 @@ export const financeApi = {
             return [];
         }
 
+        let validData = payments || [];
+        if (doctorId) {
+            validData = validData.filter(p => {
+                const bi = p.budget_item;
+                const patient = bi?.budget?.patient;
+                return bi?.doctor_id === doctorId || (!bi?.doctor_id && patient?.doctor_id === doctorId);
+            });
+        }
+
         // Aggregate by patient and by day
         const patientTotalsMap = new Map();
         const dayTotalsMap = new Map();
 
-        payments.forEach(payment => {
+        validData.forEach(payment => {
             const amount = parseFloat(payment.amount) || 0;
             const dateObj = new Date(payment.created_at);
             // Format as YYYY-MM-DD local logic (assuming stored in UTC but we display based on local, 

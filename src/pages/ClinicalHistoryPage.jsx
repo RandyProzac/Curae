@@ -349,7 +349,7 @@ export default function ClinicalHistoryPage() {
                     onClick={() => setActiveTab('IMAGENES')}
                 >
                     <ImageIcon size={16} />
-                    <span>Imágenes Generales</span>
+                    <span>Radiografías y escaneos</span>
                 </div>
                 <div
                     className={`${styles.tab} ${activeTab === 'VOUCHERS' ? styles.active : ''}`}

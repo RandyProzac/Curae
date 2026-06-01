@@ -86,25 +86,43 @@ const S = {
  * @prop {Array}    items      - Budget items with pending balance (budget_item objects)
  * @prop {object}   patient    - { id, first_name, last_name, dni }
  * @prop {string}   budgetId   - Budget id
- * @prop {string}   doctorId   - Attending doctor id
- * @prop {Function} onConfirm  - async (voucher) => void
- * @prop {Function} onClose    - () => void
+ * @prop {Array}    doctorsList- List of doctors for assignment
  */
-export default function MultiPaymentModal({ items = [], patient, budgetId, doctorId, onConfirm, onClose }) {
+export default function MultiPaymentModal({ items = [], patient, budgetId, doctorId, doctorsList = [], editVoucherData, onConfirm, onClose }) {
 
-    // Per-item amounts: { [itemId]: string }
-    const [amounts, setAmounts] = useState(() =>
-        Object.fromEntries(items.map(it => {
+    const [amounts, setAmounts] = useState(() => {
+        if (editVoucherData?.mode === 'edit') {
+            const map = {};
+            for (const it of items) {
+                const vi = editVoucherData.voucher.voucher_items.find(v => v.budget_item_id === it.id);
+                map[it.id] = vi ? parseFloat(vi.amount_paid).toFixed(2) : '0.00';
+            }
+            return map;
+        }
+        return Object.fromEntries(items.map(it => {
             const raw   = parseFloat(it.unit_price) * (it.quantity || 1);
             const disc  = parseFloat(it.discount || 0);
             const itemD = it.discount_type === 'percent' ? (raw * disc / 100) : disc;
             const remaining = Math.max(0, raw - itemD - parseFloat(it.paid_amount || 0));
             return [it.id, remaining.toFixed(2)];
-        }))
-    );
+        }));
+    });
 
-    // Payment methods: [{ id, method, amount }]
-    const [methods, setMethods] = useState([{ id: Date.now(), method: 'Efectivo', amount: '' }]);
+    const [methods, setMethods] = useState(() => {
+        if (editVoucherData?.mode === 'edit') {
+            return editVoucherData.voucher.voucher_payment_methods.map(m => ({
+                id: Math.random(),
+                method: m.method,
+                amount: parseFloat(m.amount).toFixed(2)
+            }));
+        }
+        return [{ id: Date.now(), method: 'Efectivo', amount: '' }];
+    });
+
+    const [selectedDoctorId, setSelectedDoctorId] = useState(() => {
+        if (editVoucherData?.mode === 'edit') return editVoucherData.voucher.doctor_id || doctorId || '';
+        return doctorId || '';
+    });
 
     const [loading, setLoading] = useState(false);
     const [error, setError]     = useState('');
@@ -113,28 +131,8 @@ export default function MultiPaymentModal({ items = [], patient, budgetId, docto
     const totalMethods = useMemo(() => methods.reduce((s, m) => s + (parseFloat(m.amount) || 0), 0), [methods]);
     const balanced     = Math.abs(totalItems - totalMethods) < 0.01;
 
-    // When totalItems changes, auto-fill first method amount
-    const syncFirstMethod = (newTotal) => {
-        setMethods(prev => {
-            if (prev.length === 1) {
-                return [{ ...prev[0], amount: newTotal.toFixed(2) }];
-            }
-            return prev;
-        });
-    };
-
     const handleAmountChange = (itemId, val) => {
-        const it = items.find(i => i.id === itemId);
-        if (!it) return;
-        const raw      = parseFloat(it.unit_price) * (it.quantity || 1);
-        const disc     = parseFloat(it.discount || 0);
-        const itemD    = it.discount_type === 'percent' ? (raw * disc / 100) : disc;
-        const remaining = Math.max(0, raw - itemD - parseFloat(it.paid_amount || 0));
-        const clamped  = Math.min(parseFloat(val) || 0, remaining);
-        const next     = { ...amounts, [itemId]: clamped > 0 ? String(clamped) : val };
-        setAmounts(next);
-        const newTotal = Object.values(next).reduce((s, v) => s + (parseFloat(v) || 0), 0);
-        syncFirstMethod(newTotal);
+        setAmounts(prev => ({ ...prev, [itemId]: val }));
     };
 
     const addMethod = () => {
@@ -170,7 +168,7 @@ export default function MultiPaymentModal({ items = [], patient, budgetId, docto
 
         try {
             setLoading(true);
-            await onConfirm({ items: itemsPayload, paymentMethods: methodsPayload });
+            await onConfirm({ items: itemsPayload, paymentMethods: methodsPayload, doctorId: selectedDoctorId });
         } catch (err) {
             setError(err.message || 'Error al registrar el cobro. Intenta nuevamente.');
         } finally {
@@ -181,12 +179,11 @@ export default function MultiPaymentModal({ items = [], patient, budgetId, docto
     return (
         <div style={S.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
             <div style={S.modal}>
-                {/* Header */}
                 <div style={S.header}>
                     <div>
-                        <p style={S.headerTitle}>💳 Cobrar y Generar Voucher</p>
+                        <p style={S.headerTitle}>{editVoucherData ? '✏️ Editar Voucher' : '💳 Cobrar y Generar Voucher'}</p>
                         <p style={S.headerSub}>
-                            {patient ? `${patient.first_name} ${patient.last_name}` : 'Paciente'} · {items.length} servicio(s) seleccionado(s)
+                            {patient ? `${patient.first_name} ${patient.last_name}` : 'Paciente'} · {items.length} servicio(s)
                         </p>
                     </div>
                     <button style={S.closeBtn} onClick={onClose} title="Cerrar">
@@ -194,40 +191,28 @@ export default function MultiPaymentModal({ items = [], patient, budgetId, docto
                     </button>
                 </div>
 
-                {/* Body */}
                 <div style={S.body}>
-                    {/* Section 1: Items */}
                     <div>
                         <p style={S.sectionTitle}>📋 Servicios a Cobrar</p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {items.map(it => {
-                                const raw      = parseFloat(it.unit_price) * (it.quantity || 1);
-                                const disc     = parseFloat(it.discount || 0);
-                                const itemD    = it.discount_type === 'percent' ? (raw * disc / 100) : disc;
+                                const raw = parseFloat(it.unit_price) * (it.quantity || 1);
+                                const disc = parseFloat(it.discount || 0);
+                                const itemD = it.discount_type === 'percent' ? (raw * disc / 100) : disc;
                                 const remaining = Math.max(0, raw - itemD - parseFloat(it.paid_amount || 0));
                                 return (
                                     <div key={it.id} style={S.itemRow}>
                                         <div>
                                             <p style={S.itemName}>{it.service_name}</p>
-                                            <p style={S.itemSub}>
-                                                Saldo pendiente: <strong>S/ {remaining.toFixed(2)}</strong>
-                                                {parseFloat(it.paid_amount || 0) > 0 && ` · Ya pagado: S/ ${parseFloat(it.paid_amount).toFixed(2)}`}
-                                            </p>
+                                            <p style={S.itemSub}>Saldo pendiente: <strong>S/ {remaining.toFixed(2)}</strong></p>
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}>S/</span>
                                             <input
-                                                id={`amount-item-${it.id}`}
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
-                                                max={remaining}
+                                                type="number" step="0.01" min="0"
                                                 value={amounts[it.id] ?? ''}
                                                 onChange={e => handleAmountChange(it.id, e.target.value)}
-                                                style={{
-                                                    ...S.amountInput,
-                                                    borderColor: parseFloat(amounts[it.id] || 0) > 0 ? '#0f766e' : '#e2e8f0',
-                                                }}
+                                                style={S.amountInput}
                                             />
                                         </div>
                                     </div>
@@ -236,88 +221,57 @@ export default function MultiPaymentModal({ items = [], patient, budgetId, docto
                         </div>
                     </div>
 
-                    {/* Section 2: Payment Methods */}
                     <div>
                         <p style={S.sectionTitle}>💰 Métodos de Pago</p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {methods.map((m, idx) => (
+                            {methods.map((m) => (
                                 <div key={m.id} style={S.methodRow}>
-                                    <select
-                                        id={`method-select-${m.id}`}
-                                        style={S.select}
-                                        value={m.method}
-                                        onChange={e => updateMethod(m.id, 'method', e.target.value)}
-                                    >
-                                        {PAYMENT_METHODS.map(pm => (
-                                            <option key={pm} value={pm}>{pm}</option>
-                                        ))}
+                                    <select style={S.select} value={m.method} onChange={e => updateMethod(m.id, 'method', e.target.value)}>
+                                        {PAYMENT_METHODS.map(pm => <option key={pm} value={pm}>{pm}</option>)}
                                     </select>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                         <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}>S/</span>
                                         <input
-                                            id={`method-amount-${m.id}`}
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={m.amount}
+                                            type="number" step="0.01" min="0" value={m.amount}
                                             onChange={e => updateMethod(m.id, 'amount', e.target.value)}
                                             style={{ ...S.amountInput, width: '90px' }}
                                         />
                                     </div>
-                                    {methods.length > 1 && (
-                                        <button style={S.removeBtn} onClick={() => removeMethod(m.id)} title="Eliminar método">
-                                            <Trash2 size={14} />
-                                        </button>
-                                    )}
-                                    {methods.length === 1 && <div />}
+                                    {methods.length > 1 && <button style={S.removeBtn} onClick={() => removeMethod(m.id)}><Trash2 size={14} /></button>}
                                 </div>
                             ))}
-                            <button style={S.addMethodBtn} onClick={addMethod}>
-                                <Plus size={14} /> Agregar otro método
-                            </button>
+                            <button style={S.addMethodBtn} onClick={addMethod}><Plus size={14} /> Agregar otro método</button>
                         </div>
                     </div>
 
-                    {/* Total indicator */}
-                    <div style={{
-                        ...S.totalBar,
-                        borderColor: balanced ? '#10b981' : '#f59e0b',
-                        background:  balanced ? '#f0fdf4' : '#fffbeb',
-                    }}>
+                    {doctorsList && doctorsList.length > 0 && (
+                        <div>
+                            <p style={{ ...S.sectionTitle, marginTop: '8px' }}>👩🏻‍⚕️ Doctor Responsable</p>
+                            <select value={selectedDoctorId} onChange={e => setSelectedDoctorId(e.target.value)} style={{ ...S.select, width: '100%' }}>
+                                <option value="">-- Sin Asignar --</option>
+                                {doctorsList.map(doc => <option key={doc.id} value={doc.id}>{doc.name}</option>)}
+                            </select>
+                        </div>
+                    )}
+
+                    <div style={{ ...S.totalBar, borderColor: balanced ? '#10b981' : '#f59e0b', background: balanced ? '#f0fdf4' : '#fffbeb' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            {balanced
-                                ? <CheckCircle2 size={18} color="#10b981" />
-                                : <AlertCircle  size={18} color="#f59e0b" />
-                            }
+                            {balanced ? <CheckCircle2 size={18} color="#10b981" /> : <AlertCircle size={18} color="#f59e0b" />}
                             <span style={{ fontSize: '13px', fontWeight: '600', color: balanced ? '#166534' : '#92400e' }}>
                                 {balanced ? 'Montos cuadrados ✓' : 'Los montos no cuadran'}
                             </span>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                            <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
-                                Total cobrado: <strong>S/ {totalItems.toFixed(2)}</strong>
-                            </p>
-                            <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
-                                Total métodos: <strong>S/ {totalMethods.toFixed(2)}</strong>
-                            </p>
+                            <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>Total: <strong>S/ {totalItems.toFixed(2)}</strong></p>
                         </div>
                     </div>
 
-                    {/* Error */}
-                    {error && (
-                        <div style={{ padding: '10px 14px', background: '#fee2e2', borderRadius: '8px', color: '#dc2626', fontSize: '13px', fontWeight: '500' }}>
-                            ⚠️ {error}
-                        </div>
-                    )}
+                    {error && <div style={{ padding: '10px 14px', background: '#fee2e2', borderRadius: '8px', color: '#dc2626', fontSize: '13px' }}>⚠️ {error}</div>}
                 </div>
 
-                {/* Footer */}
                 <div style={S.footer}>
-                    <button style={S.cancelBtn} onClick={onClose} disabled={loading}>
-                        Cancelar
-                    </button>
+                    <button style={S.cancelBtn} onClick={onClose} disabled={loading}>Cancelar</button>
                     <button
-                        id="btn-confirm-payment"
                         style={{
                             ...S.confirmBtn,
                             background: balanced && !loading ? 'linear-gradient(135deg, #0f766e, #134e4a)' : '#94a3b8',
@@ -326,7 +280,7 @@ export default function MultiPaymentModal({ items = [], patient, budgetId, docto
                         onClick={handleConfirm}
                         disabled={!balanced || loading}
                     >
-                        {loading ? '⏳ Registrando...' : '✅ Confirmar Cobro y Generar Voucher'}
+                        {loading ? '⏳ Procesando...' : editVoucherData ? '💾 Guardar Cambios' : '✅ Confirmar Cobro'}
                     </button>
                 </div>
             </div>

@@ -71,7 +71,7 @@ const AppRouter = () => {
                 <Route path="finanzas" element={<ProtectedRoute><FinancePage /></ProtectedRoute>} />
                 <Route path="finanzas/ingresos-diarios" element={<ProtectedRoute><DailyIncomePage /></ProtectedRoute>} />
                 <Route path="finanzas/ingresos-mensuales" element={<ProtectedRoute><MonthlyIncomePage /></ProtectedRoute>} />
-                <Route path="gastos" element={<ProtectedRoute requireAdmin><ExpensesPage /></ProtectedRoute>} />
+                <Route path="gastos" element={<ProtectedRoute><ExpensesPage /></ProtectedRoute>} />
                 <Route path="doctores" element={<DoctorsPage />} />
 
                 <Route path="integraciones" element={<IntegrationsPage />} />

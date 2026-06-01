@@ -214,12 +214,17 @@ export const getOrCreateDoctorCalendar = async (doctor, token) => {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
+        const removeAccents = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         if (listResponse.ok) {
-            const listData = await listResponse.json();
-            const existing = listData.items?.find(item =>
-                item.summary === `${doctor.name} - CURAE` ||
-                item.summary === `Curae - ${doctor.name}`
-            );
+            const cleanName = removeAccents(doctor.name).toLowerCase();
+            const parts = cleanName.split(' ');
+            const firstName = parts[0];
+            const lastName = parts.length > 1 ? parts[1] : '';
+
+            const existing = listData.items?.find(item => {
+                const cleanSummary = removeAccents(item.summary).toLowerCase();
+                return cleanSummary.includes(firstName) && cleanSummary.includes(lastName) && cleanSummary.includes('curae');
+            });
 
             if (existing) {
                 await supabase.from('doctors').update({ google_calendar_id: existing.id }).eq('id', doctor.id);
@@ -275,7 +280,7 @@ export const createGoogleCalendarEvent = async (appointmentData, doctor, token) 
         const endDateTime = DateTime.fromISO(`${appointmentData.date}T${appointmentData.end_time}`);
 
         const eventPayload = {
-            summary: appointmentData.patient_name || 'Cita Curae (Sin paciente)',
+            summary: appointmentData.summary || appointmentData.patient_name || 'Cita Curae (Sin paciente)',
             description: `Servicio: ${appointmentData.motivo || 'Consulta'}\nNotas: ${appointmentData.notes || 'N/A'}\nId Curae: ${appointmentData.id}`,
             start: {
                 dateTime: startDateTime.toISO(),
@@ -307,6 +312,117 @@ export const createGoogleCalendarEvent = async (appointmentData, doctor, token) 
     } catch (error) {
         console.error("Google Calendar Sync Error:", error);
         return { success: false, error: error.message };
+    }
+};
+
+export const updateGoogleCalendarEvent = async (eventId, appointmentData, doctor, token) => {
+    if (!token || !eventId) return { success: false, error: 'No Google Token or Event ID' };
+
+    try {
+        const calendarId = doctor.google_calendar_id || 'primary';
+        const startDateTime = DateTime.fromISO(`${appointmentData.date}T${appointmentData.start_time}`);
+        const endDateTime = DateTime.fromISO(`${appointmentData.date}T${appointmentData.end_time}`);
+
+        const eventPayload = {
+            summary: appointmentData.summary || appointmentData.patient_name || 'Cita Curae (Sin paciente)',
+            description: `Servicio: ${appointmentData.motivo || 'Consulta'}\nNotas: ${appointmentData.notes || 'N/A'}\nId Curae: ${appointmentData.id}`,
+            start: {
+                dateTime: startDateTime.toISO(),
+                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            },
+            end: {
+                dateTime: endDateTime.toISO(),
+                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            },
+        };
+
+        const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(eventPayload),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error?.message || 'Failed to update event in Google Calendar');
+        }
+
+        const data = await response.json();
+        return { success: true, eventId: data.id };
+
+    } catch (error) {
+        console.error("Google Calendar Update Error:", error);
+        return { success: false, error: error.message };
+    }
+};
+
+export const deleteGoogleCalendarEvent = async (eventId, doctor, token) => {
+    if (!token || !eventId) return { success: false, error: 'No Google Token or Event ID' };
+
+    try {
+        const calendarId = doctor.google_calendar_id || 'primary';
+        const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok && response.status !== 404 && response.status !== 410) {
+            const errorData = await response.json();
+            throw new Error(errorData.error?.message || 'Failed to delete event in Google Calendar');
+        }
+
+        return { success: true };
+
+    } catch (error) {
+        console.error("Google Calendar Delete Error:", error);
+        return { success: false, error: error.message };
+    }
+};
+
+export const findGoogleCalendarEventByCuraeId = async (curaeId, doctor, token) => {
+    if (!token || !curaeId) return null;
+
+    try {
+        const calendarId = doctor.google_calendar_id || 'primary';
+        
+        // Buscamos eventos en un rango amplio de tiempo (e.g. desde hace un año hasta un año en el futuro)
+        const now = new Date();
+        const timeMin = new Date(now.getFullYear() - 1, now.getMonth(), 1).toISOString();
+        const timeMax = new Date(now.getFullYear() + 1, now.getMonth(), 1).toISOString();
+        
+        const query = new URLSearchParams({
+            timeMin,
+            timeMax,
+            q: `Id Curae: ${curaeId}`, // Search query for the description
+            singleEvents: 'true'
+        });
+
+        const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${query.toString()}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            return null;
+        }
+
+        const data = await response.json();
+        if (data.items && data.items.length > 0) {
+            // Check specifically for our format to be sure
+            const event = data.items.find(item => item.description && item.description.includes(`Id Curae: ${curaeId}`));
+            if (event) {
+                return event.id;
+            }
+        }
+
+        return null;
+    } catch (error) {
+        console.error("Google Calendar Search Error:", error);
+        return null;
     }
 };
 

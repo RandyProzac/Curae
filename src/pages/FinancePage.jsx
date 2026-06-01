@@ -296,7 +296,7 @@ const FinancePage = () => {
                         subtext={todayMetrics.isToday ? "acumulado hoy" : `total en ${selectedDay.toLocaleDateString('es-ES')}`}
                         trend="up"
                         trendValue="Cobrado"
-                        onClick={() => navigate(`/finanzas/ingresos-mensuales?month=${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}`)}
+                        onClick={() => navigate(`/finanzas/ingresos-mensuales?month=${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, '0')}&viewMode=${viewMode}`)}
                     />
                     <KpiCard
                         title="Gastos Operativos"
@@ -306,6 +306,7 @@ const FinancePage = () => {
                         subtext="control de salidas"
                         trend="down"
                         trendValue="Egresos"
+                        onClick={() => navigate('/gastos')}
                     />
                     <KpiCard
                         title="Utilidad Neta"

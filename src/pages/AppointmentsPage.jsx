@@ -21,7 +21,7 @@ import { supabase, doctorsApi, servicesApi, patientsApi, appointmentsApi } from 
 import TimeCombobox from '../components/appointments/TimeCombobox';
 import ServiceSelector from '../components/appointments/ServiceSelector';
 import { APPOINTMENT_STATUS, getStatusConfig } from '../utils/constants';
-import { createGoogleCalendarEvent, fetchExternalEvents, getValidGoogleToken, getOrCreateDoctorCalendar } from '../services/googleCalendarService';
+import { createGoogleCalendarEvent, fetchExternalEvents, getValidGoogleToken, getOrCreateDoctorCalendar, updateGoogleCalendarEvent, deleteGoogleCalendarEvent, findGoogleCalendarEventByCuraeId } from '../services/googleCalendarService';
 
 // Fallback data
 const fallbackDoctors = [
@@ -49,6 +49,7 @@ const AppointmentsPage = () => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState('month');
     const [showModal, setShowModal] = useState(false);
+    const [isEmergencyModal, setIsEmergencyModal] = useState(false);
     const [activeTab, setActiveTab] = useState('cita');
     const [selectedAppointment, setSelectedAppointment] = useState(null);
     const [createNewPatient, setCreateNewPatient] = useState(false);
@@ -104,6 +105,7 @@ const AppointmentsPage = () => {
     });
 
     const [isDniLoading, setIsDniLoading] = useState(false); // Loading state for DNI
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleDniSearch = async () => {
         if (!newAppointment.newPatientDni || newAppointment.newPatientDni.length !== 8) {
@@ -181,6 +183,7 @@ const AppointmentsPage = () => {
                     status: apt.status || 'pending',
                     statusUpdatedAt: apt.status_updated_at,
                     statusUpdatedBy: apt.status_updated_by,
+                    google_calendar_event_id: apt.google_calendar_event_id,
                     type: 'appointment'
                 }));
 
@@ -490,7 +493,7 @@ const AppointmentsPage = () => {
                 startTime: selectedAppointment.startTime,
                 endTime: calculateEndTime(selectedAppointment.startTime, selectedAppointment.duration),
                 notes: selectedAppointment.notes || '',
-                consultorio: '',
+                consultorio: selectedAppointment.consultorio || '',
                 frecuencia: 'No se repite',
                 newPatientLastName: '',
                 newPatientPhone: ''
@@ -554,6 +557,18 @@ const AppointmentsPage = () => {
             'confirm',
             async () => {
                 try {
+                    // Check if it has a Google Calendar event before deleting
+                    const aptToDelete = appointments.find(a => a.id === id);
+                    if (aptToDelete && aptToDelete.google_calendar_event_id && aptToDelete.doctorId) {
+                        const doctorToSync = doctorsData.find(d => d.id === aptToDelete.doctorId);
+                        const googleToken = await getValidGoogleToken();
+                        if (doctorToSync && googleToken) {
+                            deleteGoogleCalendarEvent(aptToDelete.google_calendar_event_id, doctorToSync, googleToken).then(res => {
+                                if (!res.success) console.warn("Failed to delete from Google Calendar", res.error);
+                            });
+                        }
+                    }
+
                     const { error } = await supabase.from('appointments').delete().eq('id', id);
                     if (error) throw error;
 
@@ -612,6 +627,9 @@ const AppointmentsPage = () => {
             // 1. Skip if it's the same record we are editing
             if (item.id == excludeId) return false;
 
+            // 1.5. Skip if this is an emergency or the existing item is an emergency
+            if (isEmergencyModal || item.is_emergency) return false;
+
             // 2. Skip if it's a different day
             if (item.date !== date) return false;
 
@@ -638,6 +656,8 @@ const AppointmentsPage = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         try {
             let finalPatientId = newAppointment.patientId;
 
@@ -724,7 +744,9 @@ const AppointmentsPage = () => {
                 start_time: newAppointment.startTime,
                 end_time: newAppointment.endTime,
                 motivo: newAppointment.motivo,
-                notes: newAppointment.notes,
+                consultorio: newAppointment.consultorio || null,
+                notes: newAppointment.notes || '',
+                is_emergency: isEmergencyModal,
                 status: 'pending'
             };
 
@@ -780,21 +802,56 @@ const AppointmentsPage = () => {
                     ? `${savedData.patient.first_name} ${savedData.patient.last_name}`.trim()
                     : (`${newAppointment.newPatientName || ''} ${newAppointment.newPatientLastName || ''}`).trim() || 'Sin paciente';
 
-                createGoogleCalendarEvent({
+                // Determine emergency prefix
+                const summaryPrefix = savedData.is_emergency ? '[🚨 EMERGENCIA] - ' : '';
+
+                const gcalPayload = {
                     id: savedData.id,
+                    summary: `${summaryPrefix}Paciente: ${gcalPatientName} - Doctor(a) ${doctorToSync?.name || 'Varios'}`,
                     patient_name: gcalPatientName,
                     date: savedData.date,
                     start_time: savedData.start_time,
                     end_time: savedData.end_time,
                     motivo: savedData.motivo || savedData.service?.name,
                     notes: savedData.notes
-                }, doctorToSync, googleToken).then(res => {
-                    if (res.success) {
-                        console.log("Successfully synced with Google Calendar", res.eventId);
-                    } else {
-                        console.warn("Google Sync Failed", res.error);
+                };
+
+                const syncGoogleEvent = async () => {
+                    let currentEventId = savedData.google_calendar_event_id;
+                    
+                    // Option B: If no event ID is saved but it's an edit, try to find it in Google Calendar
+                    if (!currentEventId && newAppointment.id) {
+                         currentEventId = await findGoogleCalendarEventByCuraeId(savedData.id, doctorToSync, googleToken);
+                         if (currentEventId) {
+                             // Save it to Supabase for future
+                             await supabase.from('appointments').update({ google_calendar_event_id: currentEventId }).eq('id', savedData.id);
+                         }
                     }
-                });
+
+                    if (newAppointment.id && currentEventId) {
+                        // EDIT -> UPDATE
+                        const res = await updateGoogleCalendarEvent(currentEventId, gcalPayload, doctorToSync, googleToken);
+                        if (res.success) {
+                            console.log("Successfully updated Google Calendar event", res.eventId);
+                        } else {
+                            console.warn("Google Update Sync Failed", res.error);
+                        }
+                    } else {
+                        // NEW or Not Found -> CREATE
+                        const res = await createGoogleCalendarEvent(gcalPayload, doctorToSync, googleToken);
+                        if (res.success) {
+                            console.log("Successfully created Google Calendar event", res.eventId);
+                            // Save eventId to Supabase
+                            await supabase.from('appointments').update({ google_calendar_event_id: res.eventId }).eq('id', savedData.id);
+                            // Update local state to include new event id
+                            savedData.google_calendar_event_id = res.eventId;
+                        } else {
+                            console.warn("Google Create Sync Failed", res.error);
+                        }
+                    }
+                };
+
+                syncGoogleEvent();
             }
 
             // Sync State
@@ -809,9 +866,12 @@ const AppointmentsPage = () => {
                 doctorId: savedData.doctor_id,
                 serviceId: savedData.service_id,
                 notes: savedData.notes,
+                consultorio: savedData.consultorio,
                 status: savedData.status || 'pending',
+                is_emergency: savedData.is_emergency,
                 statusUpdatedAt: savedData.status_updated_at,
                 statusUpdatedBy: savedData.status_updated_by,
+                google_calendar_event_id: savedData.google_calendar_event_id,
                 type: 'appointment'
             };
 
@@ -827,6 +887,8 @@ const AppointmentsPage = () => {
         } catch (err) {
             console.error(err);
             showAlert('Error al guardar: ' + err.message, 'Error');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -916,9 +978,10 @@ const AppointmentsPage = () => {
             width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: today ? '#0f766e' : 'transparent', color: today ? 'white' : '#1e293b', fontWeight: '600', fontSize: '14px', marginBottom: '6px'
         }),
-        aptChip: (color) => ({
+        aptChip: (color, isEmergency) => ({
             padding: '4px 8px', borderRadius: '6px', background: `${color}20`, borderLeft: `3px solid ${color}`,
-            fontSize: '11px', marginBottom: '4px', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#334155'
+            fontSize: '11px', marginBottom: '4px', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#334155',
+            fontWeight: isEmergency ? 'bold' : 'normal'
         }),
         floatingBtn: {
             position: 'absolute', bottom: '32px', right: '32px', width: '56px', height: '56px', borderRadius: '50%',
@@ -1089,8 +1152,15 @@ const AppointmentsPage = () => {
                         <button style={styles.toggleBtn(viewMode === 'month')} onClick={() => setViewMode('month')}>Mes</button>
                     </div>
 
+                    <button 
+                        style={{ padding: '8px 16px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', fontSize: '14px', cursor: 'pointer', marginRight: '8px' }}
+                        onClick={() => { setIsEmergencyModal(true); handleOpenNewAppointment(); }}
+                    >
+                        + Emergencia
+                    </button>
+
                     <button
-                        onClick={handleOpenNewAppointment}
+                        onClick={() => { setIsEmergencyModal(false); handleOpenNewAppointment(); }}
                         style={{ padding: '8px 16px', background: '#0f766e', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}
                     >
                         + Nueva Cita
@@ -1113,10 +1183,10 @@ const AppointmentsPage = () => {
                                 <div key={idx} style={styles.dayCell} onClick={() => { setCurrentDate(date); setViewMode('day'); }}>
                                     <div style={styles.dayNum(isToday(date))}>{date.getDate()}</div>
                                     {getAppointmentsForDate(date).slice(0, 3).map(apt => (
-                                        <div key={apt.id} style={styles.aptChip(apt.type === 'event' ? apt.color : getDoctorColor(apt.doctorId))} onClick={(e) => { e.stopPropagation(); setSelectedAppointment(apt); }}>
+                                        <div key={apt.id} style={styles.aptChip(apt.type === 'event' ? apt.color : getDoctorColor(apt.doctorId), apt.is_emergency)} onClick={(e) => { e.stopPropagation(); setSelectedAppointment(apt); }}>
                                             {apt.type === 'appointment' && (
                                                 <span style={{ marginRight: '4px', fontSize: '10px' }}>
-                                                    {getStatusConfig(apt.status).icon}
+                                                    {apt.is_emergency ? '🚨' : getStatusConfig(apt.status).icon}
                                                 </span>
                                             )}
                                             <span style={{ fontWeight: '600' }}>{apt.startTime}</span> {apt.type === 'event' ? apt.title : apt.patient}
@@ -1185,7 +1255,7 @@ const AppointmentsPage = () => {
                                         background: 'white', borderRadius: '16px', padding: '16px 24px',
                                         boxShadow: '0 2px 6px -1px rgba(0,0,0,0.05)',
                                         border: '1px solid #f1f5f9', cursor: 'pointer',
-                                        borderLeft: apt.type === 'event' ? `4px solid ${apt.color}` : '1px solid #f1f5f9'
+                                        borderLeft: apt.is_emergency ? '4px solid #ef4444' : (apt.type === 'event' ? `4px solid ${apt.color}` : '1px solid #f1f5f9')
                                     }}
                                     onClick={() => setSelectedAppointment(apt)}
                                 >
@@ -1203,11 +1273,17 @@ const AppointmentsPage = () => {
                                     {/* Content */}
                                     <div style={{ flex: 1 }}>
                                         <div style={{ fontWeight: '700', color: '#1e293b', fontSize: '16px' }}>
-                                            {apt.type === 'event' ? apt.title : apt.patient}
+                                            {apt.is_emergency && '🚨 '} {apt.type === 'event' ? apt.title : apt.patient}
                                         </div>
                                         <div style={{ color: '#64748b', fontSize: '14px' }}>
                                             {apt.type === 'event' ? 'Evento Programado' : apt.treatment}
                                         </div>
+                                        {/* Appointment Details */}
+                                        {apt.consultorio && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#475569', fontSize: '14px', marginTop: '4px' }}>
+                                                <span style={{ fontSize: '14px' }}>🚪</span> Consultorio: <span style={{ fontWeight: '500', color: '#1e293b' }}>{apt.consultorio}</span>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Meta */}
@@ -1355,8 +1431,8 @@ const AppointmentsPage = () => {
                                                 left: `${left}%`,
                                                 width: `${width}%`,
                                                 height: `${height}px`,
-                                                backgroundColor: `${getDoctorColor(apt.doctorId)}25`,
-                                                borderLeft: `4px solid ${getDoctorColor(apt.doctorId)}`,
+                                                backgroundColor: apt.is_emergency ? '#fee2e2' : `${getDoctorColor(apt.doctorId)}25`,
+                                                borderLeft: apt.is_emergency ? '4px solid #ef4444' : `4px solid ${getDoctorColor(apt.doctorId)}`,
                                                 borderRadius: '4px',
                                                 padding: '4px',
                                                 fontSize: '11px',
@@ -1383,7 +1459,7 @@ const AppointmentsPage = () => {
                                         >
                                             {/* 1. Patient Name (Top Priority) */}
                                             <div style={{ fontWeight: '600', lineHeight: '1.2', marginBottom: '2px', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                {apt.type === 'event' ? apt.title : apt.patient}
+                                                {apt.is_emergency && '🚨 '} {apt.type === 'event' ? apt.title : apt.patient}
                                             </div>
 
                                             {/* 2. Time/Treatment (Visible if height permits) */}
@@ -1411,7 +1487,7 @@ const AppointmentsPage = () => {
             {/* New Appointment Button for Day View (Floating) */}
             {viewMode === 'day' && (
                 <button
-                    onClick={handleOpenNewAppointment}
+                    onClick={() => { setIsEmergencyModal(false); handleOpenNewAppointment(); }}
                     style={styles.floatingBtn}
                 >
                     <Plus size={24} />
@@ -1424,7 +1500,7 @@ const AppointmentsPage = () => {
                     <div style={{ background: 'white', borderRadius: '16px', width: '750px', maxWidth: '92vw', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
                         {/* Header */}
                         <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h3 style={{ margin: 0, fontSize: '18px', color: '#1e293b' }}>Detalles de la Cita</h3>
+                            <h3 style={{ margin: 0, fontSize: '18px', color: '#1e293b' }}>{selectedAppointment.is_emergency ? '🚨 EMERGENCIA' : 'Detalles de la Cita'}</h3>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 {selectedAppointment.type === 'appointment' && (
                                     <button
@@ -1534,9 +1610,9 @@ const AppointmentsPage = () => {
                                             {selectedAppointment.patient ? selectedAppointment.patient.charAt(0) : '?'}
                                         </div>
                                         <div>
-                                            <h2 style={{ margin: 0, fontSize: '20px', color: '#1e293b' }}>{selectedAppointment.patient}</h2>
+                                            <h2 style={{ margin: 0, fontSize: '20px', color: '#1e293b' }}>{selectedAppointment.is_emergency && '🚨 '}{selectedAppointment.patient}</h2>
                                             <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-                                                <span style={{ fontSize: '12px', background: '#f1f5f9', color: '#64748b', padding: '4px 8px', borderRadius: '6px' }}>Paciente</span>
+                                                <span style={{ fontSize: '12px', background: '#f1f5f9', color: '#64748b', padding: '4px 8px', borderRadius: '6px' }}>{selectedAppointment.is_emergency ? 'EMERGENCIA' : 'Paciente'}</span>
                                                 <span style={{
                                                     fontSize: '12px',
                                                     background: getStatusConfig(selectedAppointment.status).bgColor,
@@ -1582,6 +1658,14 @@ const AppointmentsPage = () => {
                                             </div>
                                         </div>
                                     </div>
+                                    {selectedAppointment.consultorio && (
+                                        <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
+                                            <label style={{ fontSize: '11px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Consultorio</label>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', color: '#334155', fontWeight: '500' }}>
+                                                <span>🚪</span> {selectedAppointment.consultorio}
+                                            </div>
+                                        </div>
+                                    )}
                                     {selectedAppointment.notes && (
                                         <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
                                             <label style={{ fontSize: '11px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Notas</label>
@@ -2048,9 +2132,10 @@ const AppointmentsPage = () => {
                                             </button>
                                             <button
                                                 type="submit"
-                                                style={{ padding: '10px 24px', borderRadius: '8px', border: 'none', background: '#14b8a6', color: 'white', fontWeight: '600', cursor: 'pointer' }}
+                                                disabled={isSubmitting}
+                                                style={{ padding: '10px 24px', borderRadius: '8px', border: 'none', background: isSubmitting ? '#94a3b8' : '#14b8a6', color: 'white', fontWeight: '600', cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
                                             >
-                                                Guardar
+                                                {isSubmitting ? 'Guardando...' : 'Guardar'}
                                             </button>
                                         </div>
                                     </form>
