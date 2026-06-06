@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Receipt, Printer, Calendar, Search, ChevronDown, ChevronUp, Trash2, AlertCircle } from 'lucide-react';
+import { Receipt, Printer, Calendar, Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Trash2, AlertCircle } from 'lucide-react';
 import { vouchersApi } from '../../lib/supabase';
 import { printVoucherToIframe } from '../common/PrintableVoucher';
 
@@ -46,6 +46,28 @@ const S = {
     },
     empty: { padding: '40px 20px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' },
     loadingRow: { padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '13px' },
+    doctorBadge: {
+        display: 'inline-block', padding: '2px 8px', background: '#f8fafc',
+        border: '1px solid #e2e8f0', borderRadius: '20px', fontSize: '11px',
+        color: '#475569', fontWeight: '500', whiteSpace: 'nowrap',
+    },
+    pagination: {
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '12px 20px', borderTop: '1px solid #e2e8f0', background: '#f8fafc',
+        fontSize: '13px', color: '#64748b', flexWrap: 'wrap', gap: '8px',
+    },
+    pageBtn: {
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        width: '32px', height: '32px', border: '1px solid #e2e8f0', borderRadius: '6px',
+        background: 'white', color: '#374151', cursor: 'pointer', fontSize: '13px',
+        fontWeight: '500', transition: 'all 0.15s',
+    },
+    pageBtnActive: {
+        background: '#0f766e', color: 'white', borderColor: '#0f766e', fontWeight: '700',
+    },
+    pageBtnDisabled: {
+        opacity: 0.4, cursor: 'not-allowed', pointerEvents: 'none',
+    },
 };
 
 /**
@@ -69,6 +91,8 @@ export default function VoucherHistory({ patientId = null, compact = false }) {
     const [loading, setLoading]   = useState(false);
     const [search, setSearch]     = useState('');
     const [sort, setSort]         = useState({ col: 'created_at', asc: false });
+    const [currentPage, setCurrentPage] = useState(1);
+    const PAGE_SIZE = 15;
     const [voucherToDelete, setVoucherToDelete] = useState(null);
 
     const load = useCallback(async () => {
@@ -147,6 +171,14 @@ export default function VoucherHistory({ patientId = null, compact = false }) {
             return 0;
         });
 
+    // Pagination
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    const safePage = Math.min(currentPage, totalPages);
+    const paginatedData = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+    // Reset page when filters change
+    useEffect(() => { setCurrentPage(1); }, [from, to, search, sort.col, sort.asc]);
+
     const SortIcon = ({ col }) => sort.col === col
         ? (sort.asc ? <ChevronUp size={13} /> : <ChevronDown size={13} />)
         : null;
@@ -206,6 +238,7 @@ export default function VoucherHistory({ patientId = null, compact = false }) {
                                         Fecha / Hora <SortIcon col="created_at" />
                                     </th>
                                     {!compact && <th style={S.th}>Paciente</th>}
+                                    {!compact && <th style={S.th}>Doctor</th>}
                                     <th style={S.th}>Servicios</th>
                                     <th style={{ ...S.th, textAlign: 'right' }} onClick={() => toggleSort('total')}>
                                         Total <SortIcon col="total" />
@@ -215,7 +248,7 @@ export default function VoucherHistory({ patientId = null, compact = false }) {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filtered.map(v => {
+                                {paginatedData.map(v => {
                                     const createdAt = new Date(v.created_at);
                                     const fecha = createdAt.toLocaleDateString('es-PE');
                                     const hora  = createdAt.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
@@ -238,6 +271,15 @@ export default function VoucherHistory({ patientId = null, compact = false }) {
                                                 <td style={S.td}>
                                                     <div style={{ fontWeight: '600' }}>{patName}</div>
                                                     {v.patient?.dni && <div style={{ fontSize: '11px', color: '#94a3b8' }}>DNI: {v.patient.dni}</div>}
+                                                </td>
+                                            )}
+                                            {!compact && (
+                                                <td style={S.td}>
+                                                    {v.doctor?.name ? (
+                                                        <span style={S.doctorBadge}>{v.doctor.name}</span>
+                                                    ) : (
+                                                        <span style={{ ...S.doctorBadge, color: '#94a3b8', borderStyle: 'dashed' }}>Sin asignar</span>
+                                                    )}
                                                 </td>
                                             )}
                                             <td style={{ ...S.td, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={services}>
@@ -279,7 +321,7 @@ export default function VoucherHistory({ patientId = null, compact = false }) {
                             </tbody>
                             <tfoot>
                                 <tr style={{ background: '#f8fafc', borderTop: '2px solid #e2e8f0' }}>
-                                    <td colSpan={compact ? 4 : 5} style={{ ...S.td, fontWeight: '700', color: '#374151' }}>
+                                    <td colSpan={compact ? 4 : 6} style={{ ...S.td, fontWeight: '700', color: '#374151' }}>
                                         Total período ({filtered.length} vouchers):
                                     </td>
                                     <td style={{ ...S.td, textAlign: 'right', fontWeight: '800', fontSize: '15px', color: '#059669' }}>
@@ -290,6 +332,50 @@ export default function VoucherHistory({ patientId = null, compact = false }) {
                             </tfoot>
                         </table>
                     </div>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div style={S.pagination}>
+                            <span>
+                                Mostrando {((safePage - 1) * PAGE_SIZE) + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} de {filtered.length}
+                            </span>
+                            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                <button
+                                    style={{ ...S.pageBtn, ...(safePage <= 1 ? S.pageBtnDisabled : {}) }}
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={safePage <= 1}
+                                >
+                                    <ChevronLeft size={16} />
+                                </button>
+                                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                    .filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 2)
+                                    .reduce((acc, p, idx, arr) => {
+                                        if (idx > 0 && p - arr[idx - 1] > 1) acc.push('...');
+                                        acc.push(p);
+                                        return acc;
+                                    }, [])
+                                    .map((p, i) => p === '...' ? (
+                                        <span key={`dots-${i}`} style={{ padding: '0 4px', color: '#94a3b8' }}>…</span>
+                                    ) : (
+                                        <button
+                                            key={p}
+                                            style={{ ...S.pageBtn, ...(p === safePage ? S.pageBtnActive : {}) }}
+                                            onClick={() => setCurrentPage(p)}
+                                        >
+                                            {p}
+                                        </button>
+                                    ))
+                                }
+                                <button
+                                    style={{ ...S.pageBtn, ...(safePage >= totalPages ? S.pageBtnDisabled : {}) }}
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={safePage >= totalPages}
+                                >
+                                    <ChevronRight size={16} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
 
