@@ -929,6 +929,7 @@ export const financeApi = {
             .from('payments')
             .select(`
                 amount,
+                doctor_id,
                 budget_item:budget_items (
                     doctor_id,
                     budget:budgets (
@@ -951,7 +952,10 @@ export const financeApi = {
             validData = validData.filter(p => {
                 const bi = p.budget_item;
                 const patient = bi?.budget?.patient;
-                return bi?.doctor_id === doctorId || (!bi?.doctor_id && patient?.doctor_id === doctorId);
+                // Priority: payment.doctor_id > budget_item.doctor_id > patient.doctor_id
+                return p.doctor_id === doctorId ||
+                       (!p.doctor_id && (bi?.doctor_id === doctorId ||
+                       (!bi?.doctor_id && patient?.doctor_id === doctorId)));
             });
         }
 
@@ -1049,6 +1053,7 @@ export const financeApi = {
                 id,
                 amount,
                 created_at,
+                doctor_id,
                 budget_item:budget_items (
                     doctor_id,
                     budget:budgets (
@@ -1077,7 +1082,10 @@ export const financeApi = {
             validData = validData.filter(p => {
                 const bi = p.budget_item;
                 const patient = bi?.budget?.patient;
-                return bi?.doctor_id === doctorId || (!bi?.doctor_id && patient?.doctor_id === doctorId);
+                // Priority: payment.doctor_id > budget_item.doctor_id > patient.doctor_id
+                return p.doctor_id === doctorId ||
+                       (!p.doctor_id && (bi?.doctor_id === doctorId ||
+                       (!bi?.doctor_id && patient?.doctor_id === doctorId)));
             });
         }
 
@@ -1274,24 +1282,24 @@ export const financeApi = {
             // Process payments for actual revenue
             payments.forEach(p => {
                 if (!p.budget_item?.budget_id) return;
-                
-                // Track revenue only if it matches doctorId
-                if (doctorId) {
-                    const matchesDoctor = p.doctor_id === doctorId || (!p.doctor_id && p.budget_item.doctor_id === doctorId);
-                    if (!matchesDoctor) return;
-                }
 
                 const bi = p.budget_item;
                 const budgetId = bi?.budget_id;
                 const budget = budgets.find(b => b.id === budgetId);
                 const pid = budget?.patient_id;
+                const patDocId = budget?.patient?.doctor_id;
+                
+                // Track revenue only if it matches doctorId
+                // Priority: payment.doctor_id > budget_item.doctor_id > patient.doctor_id
+                if (doctorId) {
+                    const matchesDoctor = p.doctor_id === doctorId ||
+                                         (!p.doctor_id && (bi?.doctor_id === doctorId ||
+                                         (!bi?.doctor_id && patDocId === doctorId)));
+                    if (!matchesDoctor) return;
+                }
                 
                 if (pid && statsMap[pid]) {
-                    const patDocId = budget?.patient?.doctor_id;
-                    const isRelevant = !doctorId || bi?.doctor_id === doctorId || (!bi?.doctor_id && patDocId === doctorId);
-                    if (isRelevant) {
-                        statsMap[pid].totalPaid += parseFloat(p.amount) || 0;
-                    }
+                    statsMap[pid].totalPaid += parseFloat(p.amount) || 0;
                 }
             });
 

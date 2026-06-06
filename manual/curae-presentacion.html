@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Curae Online — Gestión Clínica Inteligente</title>
+<meta name="description" content="Curae es la plataforma integral de gestión para clínicas odontológicas. Calendario, pacientes, finanzas y más, en un solo lugar.">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --teal:        #0f766e;
+  --teal-dark:   #134e4a;
+  --teal-light:  #14b8a6;
+  --teal-dim:    rgba(15,118,110,0.08);
+  --teal-mid:    rgba(15,118,110,0.20);
+  --blanco:      #ffffff;
+  --fondo:       #f8fafc;
+  --fondo-2:     #f0fdfa;
+  --texto:       #0f172a;
+  --texto-2:     #334155;
+  --texto-3:     #64748b;
+  --borde:       rgba(15,23,42,0.09);
+  --borde-teal:  rgba(15,118,110,0.18);
+  --verde:       #059669;
+  --verde-bg:    rgba(5,150,105,0.08);
+  --rojo:        #dc2626;
+  --rojo-bg:     rgba(220,38,38,0.07);
+  --dorado:      #b45309;
+  --dorado-bg:   rgba(251,191,36,0.10);
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body:   'Inter', sans-serif;
+  --sombra:      0 1px 3px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.05);
+  --sombra-lg:   0 4px 24px rgba(0,0,0,0.09), 0 1px 4px rgba(0,0,0,0.05);
+}
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-body);
+  background: var(--fondo);
+  color: var(--texto);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
+}
+
+/* ── HERO ── */
+.hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  justify-content: space-between;
+  padding: 52px 80px 48px;
+  position: relative; overflow: hidden;
+  background: #ffffff;
+}
+.hero-bg {
+  position: absolute; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 70% 30%, rgba(15,118,110,0.06) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 40% at 5%  80%, rgba(19,78,74,0.04)  0%, transparent 50%),
+    radial-gradient(ellipse 30% 30% at 90% 85%, rgba(20,184,166,0.05) 0%, transparent 50%);
+}
+.hero-grid {
+  position: absolute; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(15,118,110,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15,118,110,0.04) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+.hero-stripe {
+  position: absolute; top: 0; right: 120px;
+  width: 3px; height: 100%;
+  background: linear-gradient(180deg, transparent 0%, var(--teal) 30%, var(--teal) 70%, transparent 100%);
+  opacity: 0.12;
+}
+.hero-top {
+  position: relative; z-index: 1;
+  display: flex; justify-content: space-between; align-items: flex-start;
+}
+.logo {
+  display: flex; align-items: center; gap: 12px;
+  font-family: var(--font-display);
+  font-size: 22px; font-weight: 500; color: var(--teal-dark);
+  letter-spacing: 0.01em;
+}
+.logo-mark {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: var(--teal-dark); display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.logo-mark svg { width: 28px; height: 28px; }
+.hero-tag {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--fondo); border: 1px solid var(--borde-teal);
+  padding: 7px 18px; border-radius: 100px;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--teal);
+}
+.hero-tag-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--verde); animation: pulse 2s infinite;
+}
+.hero-body {
+  position: relative; z-index: 1;
+  max-width: 820px; padding-top: 72px;
+  animation: fadeUp 0.7s 0.1s ease both;
+}
+.hero-eyebrow {
+  font-size: 12px; font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--teal); margin-bottom: 22px;
+  display: flex; align-items: center; gap: 12px;
+}
+.hero-eyebrow::before {
+  content: ''; width: 28px; height: 2px;
+  background: var(--teal); border-radius: 2px;
+}
+.hero-title {
+  font-family: var(--font-display);
+  font-size: clamp(42px, 5.2vw, 74px);
+  font-weight: 400; line-height: 1.07;
+  letter-spacing: -0.02em; margin-bottom: 28px;
+  color: var(--texto);
+}
+.hero-title .accent {
+  display: block;
+  background: linear-gradient(90deg, var(--teal) 0%, var(--teal-light) 40%, var(--teal-dark) 70%, var(--teal) 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 6s linear infinite;
+}
+.hero-title .dim {
+  display: block;
+  color: var(--texto-3);
+  font-style: italic;
+}
+.hero-sub {
+  font-size: 17px; font-weight: 300;
+  color: var(--texto-2); max-width: 560px;
+  line-height: 1.8; margin-bottom: 44px;
+}
+.hero-chips {
+  display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 36px;
+}
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--fondo); border: 1px solid var(--borde);
+  border-radius: 100px; padding: 6px 14px;
+  font-size: 12px; font-weight: 500; color: var(--texto-2);
+}
+.chip-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--teal); }
+.hero-footer {
+  position: relative; z-index: 1;
+  border-top: 1px solid var(--borde);
+  padding-top: 28px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.hero-footer-left { font-size: 13px; color: var(--texto-3); }
+.hero-footer-left strong { color: var(--texto); font-weight: 600; display: block; margin-bottom: 2px; }
+.hero-stats { display: flex; gap: 44px; }
+.hero-stat-num {
+  font-family: var(--font-display);
+  font-size: 30px; font-weight: 700; color: var(--teal);
+  line-height: 1; display: block;
+}
+.hero-stat-label { font-size: 11px; color: var(--texto-3); margin-top: 3px; }
+
+/* ── SECTIONS ── */
+.section {
+  padding: 88px 80px;
+  border-top: 1px solid var(--borde);
+  position: relative;
+}
+.section.bg-alt   { background: var(--fondo); }
+.section.bg-white { background: #ffffff; }
+.section.bg-teal-light { background: var(--fondo-2); }
+.section-label {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--teal); margin-bottom: 14px;
+  display: flex; align-items: center; gap: 10px;
+}
+.section-label::before {
+  content: ''; width: 20px; height: 2px;
+  background: var(--teal); border-radius: 2px;
+}
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(30px, 3.5vw, 50px);
+  font-weight: 400; line-height: 1.12;
+  margin-bottom: 14px; letter-spacing: -0.01em;
+  color: var(--texto);
+}
+.section-title em { font-style: italic; color: var(--texto-3); }
+.section-lead {
+  font-size: 16px; font-weight: 300;
+  color: var(--texto-2);
+  max-width: 620px; line-height: 1.8;
+  margin-bottom: 52px;
+}
+
+/* ── PROBLEMA ── */
+.problema-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 2px;
+  background: var(--borde); border: 1px solid var(--borde);
+  border-radius: 16px; overflow: hidden;
+}
+.problema-card {
+  background: #ffffff; padding: 32px 36px;
+  transition: background 0.2s;
+}
+.problema-card:hover { background: var(--fondo); }
+.prob-num {
+  font-family: var(--font-display);
+  font-size: 48px; font-weight: 700;
+  color: rgba(15,118,110,0.10); line-height: 1;
+  margin-bottom: 14px;
+}
+.prob-title { font-size: 16px; font-weight: 600; margin-bottom: 8px; color: var(--texto); }
+.prob-desc { font-size: 13px; color: var(--texto-3); line-height: 1.65; }
+.prob-stat {
+  margin-top: 14px; display: inline-block;
+  background: var(--teal-dim); border: 1px solid var(--teal-mid);
+  border-radius: 6px; padding: 5px 12px;
+  font-size: 12px; color: var(--teal); font-weight: 600;
+}
+
+/* ── MÓDULOS ── */
+.modulos-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+}
+.modulo {
+  background: #ffffff; border: 1px solid var(--borde);
+  border-radius: 14px; padding: 28px 26px;
+  position: relative; overflow: hidden;
+  transition: all 0.22s; box-shadow: var(--sombra);
+}
+.modulo:hover {
+  box-shadow: var(--sombra-lg);
+  transform: translateY(-2px);
+  border-color: var(--borde-teal);
+}
+.modulo::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--teal), var(--teal-light));
+  opacity: 0; transition: opacity 0.3s;
+}
+.modulo:hover::before { opacity: 1; }
+.modulo-icon {
+  width: 44px; height: 44px; border-radius: 10px;
+  background: var(--teal-dim); border: 1px solid var(--borde-teal);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; margin-bottom: 16px;
+}
+.modulo-name { font-size: 15px; font-weight: 600; margin-bottom: 8px; color: var(--texto); }
+.modulo-desc { font-size: 12.5px; color: var(--texto-3); line-height: 1.6; margin-bottom: 14px; }
+.modulo-list { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+.modulo-list li {
+  font-size: 12px; color: var(--texto-3);
+  display: flex; gap: 8px; align-items: flex-start;
+}
+.modulo-list li::before {
+  content: ''; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--teal); flex-shrink: 0; margin-top: 5px;
+}
+
+/* ── DEMO SPLIT (feature showcase) ── */
+.demo-split {
+  display: grid; grid-template-columns: 1fr 1.2fr; gap: 56px; align-items: start;
+}
+.demo-steps { display: flex; flex-direction: column; gap: 0; position: relative; }
+.demo-steps::before {
+  content: ''; position: absolute; left: 18px; top: 36px; bottom: 0;
+  width: 1px; background: var(--borde);
+}
+.demo-step { display: flex; gap: 20px; padding-bottom: 28px; position: relative; }
+.demo-step-num {
+  width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; position: relative; z-index: 1;
+}
+.demo-step-num.primary { background: var(--teal); color: #fff; }
+.demo-step-num.dim { background: #fff; color: var(--texto-3); border: 1px solid var(--borde); }
+.demo-step-content h4 { font-size: 14px; font-weight: 600; margin-bottom: 4px; margin-top: 6px; color: var(--texto); }
+.demo-step-content p { font-size: 12.5px; color: var(--texto-3); line-height: 1.6; }
+.demo-step-tag {
+  display: inline-block; margin-top: 6px;
+  font-size: 11px; font-weight: 600; color: var(--teal);
+  background: var(--teal-dim); border-radius: 4px; padding: 2px 8px;
+}
+
+/* ── BROWSER FRAME ── */
+.browser-frame {
+  background: #ffffff; border: 1px solid var(--borde);
+  border-radius: 16px; overflow: hidden;
+  box-shadow: var(--sombra-lg);
+  animation: float 5s ease-in-out infinite;
+}
+.browser-bar {
+  padding: 11px 16px; background: #f1f5f9;
+  border-bottom: 1px solid var(--borde);
+  display: flex; align-items: center; gap: 10px;
+}
+.browser-dots { display: flex; gap: 5px; }
+.browser-dot { width: 10px; height: 10px; border-radius: 50%; }
+.browser-dot:nth-child(1) { background: #ff5f57; }
+.browser-dot:nth-child(2) { background: #febc2e; }
+.browser-dot:nth-child(3) { background: #28c840; }
+.browser-url {
+  flex: 1; background: #fff; border: 1px solid var(--borde);
+  border-radius: 6px; padding: 5px 12px;
+  font-size: 11px; color: var(--texto-3); font-family: monospace;
+}
+.browser-frame img {
+  width: 100%; height: auto; display: block;
+  max-height: 480px; object-fit: cover; object-position: top;
+}
+
+/* ── NUMS BAR ── */
+.nums-bar {
+  background: var(--teal-dark);
+  padding: 56px 80px;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 32px; text-align: center;
+}
+.nums-big {
+  font-family: var(--font-display);
+  font-size: 52px; font-weight: 700; color: #fff;
+  display: block; line-height: 1; margin-bottom: 8px;
+}
+.nums-desc { font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5; }
+
+/* ── DARK SECTION ── */
+.dark-section {
+  background: linear-gradient(135deg, #0f172a 0%, var(--teal-dark) 50%, #0f766e 100%);
+  padding: 88px 80px; border-top: 1px solid var(--borde);
+  position: relative; overflow: hidden;
+}
+.dark-section::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+.dark-content { position: relative; z-index: 1; }
+.dark-label {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: #5eead4; margin-bottom: 14px;
+  display: flex; align-items: center; gap: 10px;
+}
+.dark-label::before { content: ''; width: 20px; height: 2px; background: #5eead4; border-radius: 2px; }
+.dark-title {
+  font-family: var(--font-display);
+  font-size: clamp(30px, 3.5vw, 48px);
+  color: #fff; font-weight: 400; line-height: 1.12;
+  margin-bottom: 14px; letter-spacing: -0.01em;
+}
+.dark-title em { font-style: italic; color: rgba(255,255,255,0.35); }
+.dark-lead { font-size: 16px; color: rgba(255,255,255,0.6); max-width: 600px; line-height: 1.8; margin-bottom: 48px; }
+.dark-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.dark-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px; padding: 24px 22px;
+  transition: background 0.2s;
+}
+.dark-card:hover { background: rgba(255,255,255,0.08); }
+.dark-card-icon { font-size: 26px; display: block; margin-bottom: 12px; }
+.dark-card-title { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+.dark-card-desc { font-size: 12.5px; color: rgba(255,255,255,0.5); line-height: 1.6; }
+
+/* ── ROADMAP ── */
+.ruta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.ruta-step {
+  background: #ffffff; border: 1px solid var(--borde);
+  border-radius: 12px; padding: 24px 20px;
+  box-shadow: var(--sombra); transition: all 0.2s;
+}
+.ruta-step:hover { box-shadow: var(--sombra-lg); transform: translateY(-2px); }
+.ruta-step.active { border-color: var(--teal); background: #f0fdfa; }
+.ruta-num {
+  font-family: var(--font-display);
+  font-size: 38px; font-weight: 700;
+  color: rgba(15,118,110,0.15); line-height: 1; margin-bottom: 10px;
+}
+.ruta-step.active .ruta-num { color: rgba(15,118,110,0.3); }
+.ruta-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; color: var(--texto); }
+.ruta-desc { font-size: 12px; color: var(--texto-3); line-height: 1.55; }
+.ruta-when {
+  display: inline-block; margin-top: 12px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; padding: 3px 10px; border-radius: 100px;
+}
+.when-now   { background: var(--teal-dim); color: var(--teal); border: 1px solid var(--teal-mid); }
+.when-soon  { background: var(--dorado-bg); color: var(--dorado); border: 1px solid rgba(180,83,9,0.2); }
+.when-future{ background: var(--fondo); color: var(--texto-3); border: 1px solid var(--borde); }
+
+/* ── QUOTE / CTA ── */
+.quote-section {
+  padding: 72px 80px; border-top: 1px solid var(--borde);
+  background: #ffffff;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center;
+}
+.quote-mark {
+  font-family: var(--font-display);
+  font-size: 100px; color: rgba(15,118,110,0.08);
+  line-height: 0.7; display: block; margin-bottom: 20px;
+}
+.quote-text {
+  font-family: var(--font-display);
+  font-size: clamp(20px, 2.3vw, 30px);
+  font-weight: 400; font-style: italic;
+  color: var(--texto-2); line-height: 1.45;
+  margin-bottom: 18px;
+}
+.quote-text strong { font-style: normal; color: var(--texto); }
+.quote-attr { font-size: 13px; color: var(--texto-3); }
+.quote-right { display: flex; flex-direction: column; gap: 12px; }
+.contact-row {
+  display: flex; gap: 14px; align-items: center;
+  padding: 14px 18px; background: var(--fondo);
+  border: 1px solid var(--borde); border-radius: 10px;
+  transition: border-color 0.2s;
+}
+.contact-row:hover { border-color: var(--borde-teal); }
+.contact-icon { font-size: 18px; flex-shrink: 0; }
+.contact-info { font-size: 13px; color: var(--texto-3); }
+.contact-info strong { display: block; font-size: 14px; color: var(--texto); font-weight: 600; margin-bottom: 1px; }
+
+/* ── CTA ── */
+.cta {
+  padding: 96px 80px; text-align: center;
+  position: relative; overflow: hidden; background: var(--fondo);
+}
+.cta-bg {
+  position: absolute; inset: 0; z-index: 0;
+  background: radial-gradient(ellipse 55% 55% at 50% 50%, rgba(15,118,110,0.06) 0%, transparent 60%);
+}
+.cta-content { position: relative; z-index: 1; }
+.cta-title {
+  font-family: var(--font-display);
+  font-size: clamp(32px, 4vw, 56px);
+  font-weight: 400; line-height: 1.12;
+  margin-bottom: 16px; letter-spacing: -0.02em;
+  color: var(--texto);
+}
+.cta-title span {
+  background: linear-gradient(90deg, var(--teal), var(--teal-light), var(--teal-dark), var(--teal));
+  background-size: 200% auto;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; animation: shimmer 5s linear infinite;
+}
+.cta-sub { font-size: 16px; color: var(--texto-3); max-width: 460px; margin: 0 auto 40px; line-height: 1.8; }
+
+/* ── FOOTER ── */
+.footer {
+  padding: 28px 80px; border-top: 1px solid var(--borde);
+  background: #ffffff;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.footer-logo { font-family: var(--font-display); font-size: 18px; color: var(--teal-dark); font-weight: 500; }
+.footer-note { font-size: 12px; color: var(--texto-3); }
+
+/* ── BADGE ── */
+.badge { display: inline-block; margin-top: 14px; font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 10px; border-radius: 100px; }
+.badge-live   { background: var(--verde-bg);  color: var(--verde);  border: 1px solid rgba(5,150,105,0.25); }
+.badge-build  { background: var(--dorado-bg); color: var(--dorado); border: 1px solid rgba(180,83,9,0.2); }
+.badge-soon   { background: var(--fondo);     color: var(--texto-3);border: 1px solid var(--borde); }
+
+/* ── ALERT BUBBLE ── */
+.alert-bubble {
+  background: rgba(15,118,110,0.06);
+  border: 1px solid rgba(15,118,110,0.20);
+  border-radius: 8px; padding: 10px 12px; margin: 4px 0;
+}
+.alert-tag {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--teal);
+  background: var(--teal-dim); border-radius: 4px;
+  padding: 2px 7px; display: inline-block; margin-bottom: 5px;
+}
+.alert-title { font-size: 12.5px; font-weight: 600; color: var(--texto); margin-bottom: 2px; }
+.alert-sub { font-size: 11px; color: var(--texto-3); }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 960px) {
+  .hero, .section, .dark-section, .nums-bar, .cta, .footer, .quote-section { padding: 48px 28px; }
+  .hero { min-height: auto; }
+  .problema-grid, .modulos-grid, .demo-split, .dark-grid, .ruta-grid, .nums-bar, .quote-section { grid-template-columns: 1fr; }
+  .hero-stats { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     HERO
+══════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-stripe"></div>
+
+  <div class="hero-top">
+    <div class="logo">
+      <div class="logo-mark">
+        <!-- Curae tooth icon inline -->
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M20 4C13 4 8 9 8 16c0 4-1 7-1.5 10.5C6 30 7 33 9 35c1.5 1.5 3.5 2 5 1 1-.7 1.5-2 1-3.5C14 30 13.5 27 15 25.5c1-1 2.5-1.5 5-1.5s4 .5 5 1.5c1.5 1.5 1 4.5.5 6.5-.5 1.5 0 2.8 1 3.5 1.5 1 3.5.5 5-1 2-2 3-5 2.5-8.5C33.5 23 32 20 32 16c0-7-5-12-12-12z" fill="white"/>
+        </svg>
+      </div>
+      Curae Online
+    </div>
+    <div class="hero-tag">
+      <span class="hero-tag-dot"></span>
+      Sistema listo para usar
+    </div>
+  </div>
+
+  <div class="hero-body">
+    <div class="hero-eyebrow">Gestión Clínica Inteligente</div>
+    <h1 class="hero-title">
+      La plataforma que
+      <span class="accent">transforma tu clínica</span>
+      <span class="dim">en un sistema inteligente.</span>
+    </h1>
+    <p class="hero-sub">
+      Curae es el sistema de gestión integral para clínicas odontológicas. Agenda, pacientes, finanzas,
+      doctores e inventario — todo conectado, en tiempo real, desde cualquier dispositivo.
+    </p>
+    <div class="hero-chips">
+      <span class="chip"><span class="chip-dot"></span>📅 Calendario Inteligente</span>
+      <span class="chip"><span class="chip-dot"></span>👥 Gestión de Pacientes</span>
+      <span class="chip"><span class="chip-dot"></span>💰 Finanzas Maestras</span>
+      <span class="chip"><span class="chip-dot"></span>🩺 Doctores & Personal</span>
+      <span class="chip"><span class="chip-dot"></span>🦷 Historia Clínica</span>
+      <span class="chip"><span class="chip-dot"></span>📦 Inventario</span>
+      <span class="chip"><span class="chip-dot"></span>🔗 Google Calendar</span>
+    </div>
+  </div>
+
+  <div class="hero-footer">
+    <div class="hero-footer-left">
+      <strong>Curae Online Dental Solutions</strong>
+      Gestión clínica de nueva generación · Arequipa, Perú
+    </div>
+    <div class="hero-stats">
+      <div>
+        <span class="hero-stat-num">7</span>
+        <div class="hero-stat-label">Doctores activos</div>
+      </div>
+      <div>
+        <span class="hero-stat-num">100%</span>
+        <div class="hero-stat-label">Nube · Tiempo real</div>
+      </div>
+      <div>
+        <span class="hero-stat-num">∞</span>
+        <div class="hero-stat-label">Pacientes sin límite</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     EL PROBLEMA
+══════════════════════════════════════ -->
+<section class="section bg-white">
+  <div class="section-label">El Problema</div>
+  <h2 class="section-title">La gestión clínica <em>manual tiene un costo</em></h2>
+  <p class="section-lead">
+    Las clínicas odontológicas modernas pierden tiempo, dinero y pacientes por falta de herramientas digitales integradas.
+    Curae resuelve estos problemas de raíz.
+  </p>
+  <div class="problema-grid">
+    <div class="problema-card">
+      <div class="prob-num">01</div>
+      <div class="prob-title">Agenda caótica y colisiones</div>
+      <p class="prob-desc">Las citas en papel o en WhatsApp generan doble agendamiento, olvidos y pérdida de pacientes que nunca más regresan.</p>
+      <span class="prob-stat">⚡ Curae detecta conflictos automáticamente</span>
+    </div>
+    <div class="problema-card">
+      <div class="prob-num">02</div>
+      <div class="prob-title">Finanzas sin visibilidad</div>
+      <p class="prob-desc">Sin saber cuánto ingresa cada doctor, cuáles son los gastos reales y qué pacientes deben dinero, es imposible crecer con seguridad.</p>
+      <span class="prob-stat">📊 Dashboard financiero en tiempo real</span>
+    </div>
+    <div class="problema-card">
+      <div class="prob-num">03</div>
+      <div class="prob-title">Historias clínicas perdidas</div>
+      <p class="prob-desc">Fichas físicas, presupuestos en hojas de cálculo y odontogramas dibujados a mano no son escalables ni seguros.</p>
+      <span class="prob-stat">🦷 Odontograma digital + presupuestos</span>
+    </div>
+    <div class="problema-card">
+      <div class="prob-num">04</div>
+      <div class="prob-title">Inventario sin control</div>
+      <p class="prob-desc">Los insumos médicos se agotan sin previo aviso, interrumpiendo tratamientos y generando costos de emergencia innecesarios.</p>
+      <span class="prob-stat">📦 Alertas de stock mínimo automáticas</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     DASHBOARD
+══════════════════════════════════════ -->
+<section class="section bg-alt">
+  <div class="section-label">Centro de Comando</div>
+  <h2 class="section-title">Dashboard: <em>todo a la vista</em></h2>
+  <p class="section-lead">Al iniciar sesión, el administrador ve de inmediato los KPIs más importantes de la clínica sin buscar nada.</p>
+
+  <div class="demo-split">
+    <div>
+      <div class="demo-steps">
+        <div class="demo-step">
+          <div class="demo-step-num primary">1</div>
+          <div class="demo-step-content">
+            <h4>Saludo personalizado por rol</h4>
+            <p>El sistema detecta si es Admin o Doctor y adapta el saludo y los datos visibles. Los doctores ven solo sus citas y pacientes.</p>
+            <span class="demo-step-tag">Roles y permisos</span>
+          </div>
+        </div>
+        <div class="demo-step">
+          <div class="demo-step-num primary">2</div>
+          <div class="demo-step-content">
+            <h4>KPIs en tiempo real</h4>
+            <p>Pacientes totales, citas del día, tratamientos activos e ingresos del mes se actualizan automáticamente desde Supabase.</p>
+            <span class="demo-step-tag">Datos en vivo</span>
+          </div>
+        </div>
+        <div class="demo-step">
+          <div class="demo-step-num primary">3</div>
+          <div class="demo-step-content">
+            <h4>Doctor Status Board</h4>
+            <p>Visualiza en tiempo real qué doctores están disponibles, en consulta o fuera de la clínica con indicadores de color.</p>
+            <span class="demo-step-tag">Estado de doctores</span>
+          </div>
+        </div>
+        <div class="demo-step">
+          <div class="demo-step-num dim">4</div>
+          <div class="demo-step-content">
+            <h4>Próximas citas y alerta de inventario</h4>
+            <p>Las siguientes citas del día y los productos con stock bajo aparecen automáticamente sin necesidad de buscarlos.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="browser-frame">
+      <div class="browser-bar">
+        <div class="browser-dots">
+          <div class="browser-dot"></div>
+          <div class="browser-dot"></div>
+          <div class="browser-dot"></div>
+        </div>
+        <div class="browser-url">curae.app/</div>
+      </div>
+      <img src="assets/2.png" alt="Dashboard de Curae" loading="lazy">
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     MÓDULOS CORE
+══════════════════════════════════════ -->
+<section class="section bg-white">
+  <div class="section-label">Plataforma Completa</div>
+  <h2 class="section-title">6 módulos integrados, <em>una sola plataforma</em></h2>
+  <p class="section-lead">Todo lo que una clínica odontológica necesita para operar con excelencia, sin herramientas externas.</p>
+  <div class="modulos-grid">
+    <div class="modulo">
+      <div class="modulo-icon">📅</div>
+      <div class="modulo-name">Calendario & Citas</div>
+      <p class="modulo-desc">Vista diaria, mensual y semanal por doctor con sincronización Google Calendar.</p>
+      <ul class="modulo-list">
+        <li>Vista diaria, semanal y mensual</li>
+        <li>Detección de conflictos automática</li>
+        <li>Modo cita de emergencia</li>
+        <li>Filtros por doctor y color</li>
+      </ul>
+      <span class="badge badge-live">● Disponible ahora</span>
+    </div>
+    <div class="modulo">
+      <div class="modulo-icon">👥</div>
+      <div class="modulo-name">Gestión de Pacientes</div>
+      <p class="modulo-desc">Base de datos centralizada con búsqueda por nombre o DNI y sidebar de detalle.</p>
+      <ul class="modulo-list">
+        <li>Última y próxima cita en tiempo real</li>
+        <li>Avatares coloridos por doctor</li>
+        <li>Acceso directo a Historia Clínica</li>
+        <li>Búsqueda por DNI con API RENIEC</li>
+      </ul>
+      <span class="badge badge-live">● Disponible ahora</span>
+    </div>
+    <div class="modulo">
+      <div class="modulo-icon">🦷</div>
+      <div class="modulo-name">Historia Clínica</div>
+      <p class="modulo-desc">Odontograma digital interactivo con presupuestos y evolución de tratamientos.</p>
+      <ul class="modulo-list">
+        <li>Odontograma de 32 piezas</li>
+        <li>Presupuestos detallados en soles</li>
+        <li>Evolución y registro de sesiones</li>
+        <li>Vouchers de pago imprimibles</li>
+      </ul>
+      <span class="badge badge-live">● Disponible ahora</span>
+    </div>
+    <div class="modulo">
+      <div class="modulo-icon">💰</div>
+      <div class="modulo-name">Finanzas Maestras</div>
+      <p class="modulo-desc">Dashboard financiero con ingresos diarios, mensuales y flujo de caja anual.</p>
+      <ul class="modulo-list">
+        <li>KPIs diarios, mensuales y anuales</li>
+        <li>Top doctores por ingresos</li>
+        <li>Ranking de pacientes por inversión</li>
+        <li>Distribución de gastos (Pie Chart)</li>
+      </ul>
+      <span class="badge badge-live">● Disponible ahora</span>
+    </div>
+    <div class="modulo">
+      <div class="modulo-icon">🩺</div>
+      <div class="modulo-name">Doctores & Personal</div>
+      <p class="modulo-desc">Gestión del cuerpo médico y personal administrativo con roles diferenciados.</p>
+      <ul class="modulo-list">
+        <li>Citas del mes por doctor</li>
+        <li>Creación con cuenta de acceso</li>
+        <li>Firma digital para documentos</li>
+        <li>Roles: Admin, Doctor, Asistente</li>
+      </ul>
+      <span class="badge badge-live">● Disponible ahora</span>
+    </div>
+    <div class="modulo">
+      <div class="modulo-icon">📦</div>
+      <div class="modulo-name">Inventario</div>
+      <p class="modulo-desc">Control de stock de insumos médicos con alertas automáticas de stock mínimo.</p>
+      <ul class="modulo-list">
+        <li>Alertas de stock crítico</li>
+        <li>Valor del inventario en capital</li>
+        <li>Visible en Dashboard principal</li>
+        <li>Historial de movimientos</li>
+      </ul>
+      <span class="badge badge-live">● Disponible ahora</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     CALENDARIO
+══════════════════════════════════════ -->
+<section class="section bg-teal-light">
+  <div class="section-label">Módulo 1</div>
+  <h2 class="section-title">Calendario <em>que se adapta</em></h2>
+  <p class="section-lead">Una agenda visual inteligente con vistas diaria, semanal y mensual. Sincroniza con Google Calendar y previene el doble agendamiento — sin límite de doctores.</p>
+
+  <div class="demo-split">
+    <div class="browser-frame" style="order: -1;">
+      <div class="browser-bar">
+        <div class="browser-dots">
+          <div class="browser-dot"></div>
+          <div class="browser-dot"></div>
+          <div class="browser-dot"></div>
+        </div>
+        <div class="browser-url">curae.app/citas</div>
+      </div>
+      <img src="assets/3.png" alt="Calendario de Curae" loading="lazy">
+    </div>
+    <div class="demo-steps">
+      <div class="demo-step">
+        <div class="demo-step-num primary">1</div>
+        <div class="demo-step-content">
+          <h4>Vista diaria, semanal y mensual</h4>
+          <p>Alterna entre vista diaria, semanal y mensual con un clic. Cada cita aparece en el color del doctor asignado para identificación inmediata.</p>
+          <span class="demo-step-tag">Multi-doctor visual</span>
+        </div>
+      </div>
+      <div class="demo-step">
+        <div class="demo-step-num primary">2</div>
+        <div class="demo-step-content">
+          <h4>Detección de conflictos</h4>
+          <p>El sistema bloquea automáticamente la creación de citas en horarios ya ocupados por el mismo doctor, evitando el doble agendamiento.</p>
+          <span class="demo-step-tag">Anti-colisión</span>
+        </div>
+      </div>
+      <div class="demo-step">
+        <div class="demo-step-num primary">3</div>
+        <div class="demo-step-content">
+          <h4>Sincronización con Google Calendar</h4>
+          <p>Cada doctor tiene su propio calendario de Google. Las citas creadas en Curae aparecen automáticamente en los calendarios personales.</p>
+          <span class="demo-step-tag">🔗 Google Calendar API</span>
+        </div>
+      </div>
+      <div class="demo-step">
+        <div class="demo-step-num dim">4</div>
+        <div class="demo-step-content">
+          <h4>Cita de emergencia y paciente nuevo</h4>
+          <p>Con un botón especial se registra una emergencia sin restricciones de horario. Además, se puede crear un paciente nuevo directamente desde el modal de cita.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     PACIENTES & HISTORIA CLÍNICA
+══════════════════════════════════════ -->
+<section class="section bg-white">
+  <div class="section-label">Módulo 2</div>
+  <h2 class="section-title">Pacientes con <em>historial completo</em></h2>
+  <p class="section-lead">Desde la lista de pacientes hasta el odontograma interactivo y los vouchers de pago, todo en un flujo natural y sin fricciones.</p>
+
+  <div class="demo-split">
+    <div class="demo-steps">
+      <div class="demo-step">
+        <div class="demo-step-num primary">1</div>
+        <div class="demo-step-content">
+          <h4>Lista ordenada por próxima cita</h4>
+          <p>Los pacientes con cita más próxima aparecen primero. Badges "Hoy", "En 2 días" y "Hace X días" dan contexto inmediato.</p>
+          <span class="demo-step-tag">Ordenamiento inteligente</span>
+        </div>
+      </div>
+      <div class="demo-step">
+        <div class="demo-step-num primary">2</div>
+        <div class="demo-step-content">
+          <h4>Búsqueda por nombre o DNI</h4>
+          <p>Encuentra cualquier paciente instantáneamente escribiendo su nombre o número de documento. Sin recargas, en tiempo real.</p>
+          <span class="demo-step-tag">Búsqueda instantánea</span>
+        </div>
+      </div>
+      <div class="demo-step">
+        <div class="demo-step-num primary">3</div>
+        <div class="demo-step-content">
+          <h4>Odontograma interactivo</h4>
+          <p>Diagrama dental de 32 piezas donde el doctor registra el estado de cada diente: sano, caries, tratado o necesita tratamiento.</p>
+          <span class="demo-step-tag">🦷 Odontograma digital</span>
+        </div>
+      </div>
+      <div class="demo-step">
+        <div class="demo-step-num dim">4</div>
+        <div class="demo-step-content">
+          <h4>Presupuestos y vouchers</h4>
+          <p>Crea presupuestos detallados por tratamiento y genera vouchers de pago imprimibles con la firma del doctor.</p>
+        </div>
+      </div>
+    </div>
+    <div class="browser-frame">
+      <div class="browser-bar">
+        <div class="browser-dots">
+          <div class="browser-dot"></div>
+          <div class="browser-dot"></div>
+          <div class="browser-dot"></div>
+        </div>
+        <div class="browser-url">curae.app/pacientes</div>
+      </div>
+      <img src="assets/4.png" alt="Pacientes de Curae" loading="lazy">
+    </div>
+  </div>
+
+  <!-- Historia Clínica -->
+  <div style="margin-top: 64px;">
+    <div class="section-label" style="margin-bottom: 14px;">Historia Clínica</div>
+    <div class="demo-split">
+      <div class="browser-frame" style="order: -1;">
+        <div class="browser-bar">
+          <div class="browser-dots">
+            <div class="browser-dot"></div>
+            <div class="browser-dot"></div>
+            <div class="browser-dot"></div>
+          </div>
+          <div class="browser-url">curae.app/pacientes/:id/historia-clinica</div>
+        </div>
+        <img src="assets/6.png" alt="Odontograma de Curae" loading="lazy">
+      </div>
+      <div style="display: flex; flex-direction: column; justify-content: center; gap: 20px;">
+        <h3 style="font-family: var(--font-display); font-size: 28px; font-weight: 400; color: var(--texto);">
+          Todo el expediente clínico, <em style="font-style: italic; color: var(--texto-3);">en una pantalla</em>
+        </h3>
+        <p style="font-size: 15px; color: var(--texto-2); line-height: 1.8;">
+          La historia clínica de Curae integra el odontograma visual, el plan de tratamiento con costos detallados,
+          el registro de evolución por sesión y los vouchers de pago con firma del especialista.
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="alert-bubble">
+            <span class="alert-tag">Odontograma</span>
+            <div class="alert-title">32 piezas dentales</div>
+            <div class="alert-sub">Con leyenda de estados a color</div>
+          </div>
+          <div class="alert-bubble">
+            <span class="alert-tag">Presupuesto</span>
+            <div class="alert-title">Ítems y totales en S/</div>
+            <div class="alert-sub">Imprimible como voucher</div>
+          </div>
+          <div class="alert-bubble">
+            <span class="alert-tag">Evolución</span>
+            <div class="alert-title">Registro por sesión</div>
+            <div class="alert-sub">Progreso de tratamiento</div>
+          </div>
+          <div class="alert-bubble">
+            <span class="alert-tag">Firma</span>
+            <div class="alert-title">Firma digital del doctor</div>
+            <div class="alert-sub">En cada documento generado</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     FINANZAS
+══════════════════════════════════════ -->
+<section class="section bg-alt">
+  <div class="section-label">Módulo 3</div>
+  <h2 class="section-title">Inteligencia <em>financiera total</em></h2>
+  <p class="section-lead">Visualiza ingresos diarios, mensuales y anuales. Controla gastos, conoce el ranking de tus pacientes más valiosos y recibe alertas inteligentes.</p>
+
+  <div class="demo-split" style="margin-bottom: 48px;">
+    <div class="browser-frame" style="order: -1;">
+      <div class="browser-bar">
+        <div class="browser-dots">
+          <div class="browser-dot"></div>
+          <div class="browser-dot"></div>
+          <div class="browser-dot"></div>
+        </div>
+        <div class="browser-url">curae.app/finanzas</div>
+      </div>
+      <img src="assets/7.png" alt="Finanzas Curae" loading="lazy">
+    </div>
+    <div class="demo-steps">
+      <div class="demo-step">
+        <div class="demo-step-num primary">1</div>
+        <div class="demo-step-content">
+          <h4>Métricas del día, mes y año</h4>
+          <p>Selecciona cualquier fecha para ver el ingreso y gasto de ese día exacto. Cambia el mes para ver el resumen mensual con un clic.</p>
+          <span class="demo-step-tag">Filtros temporales flexibles</span>
+        </div>
+      </div>
+      <div class="demo-step">
+        <div class="demo-step-num primary">2</div>
+        <div class="demo-step-content">
+          <h4>Flujo de caja anual (gráfico)</h4>
+          <p>Un gráfico de área compara ingresos vs gastos mes a mes a lo largo del año. Ideal para identificar tendencias y estacionalidad.</p>
+          <span class="demo-step-tag">📈 Recharts interactivo</span>
+        </div>
+      </div>
+      <div class="demo-step">
+        <div class="demo-step-num primary">3</div>
+        <div class="demo-step-content">
+          <h4>Vista Global vs Mis Finanzas</h4>
+          <p>El administrador puede ver todas las finanzas consolidadas, o cambiar a una vista personal para ver solo los ingresos de un doctor específico.</p>
+          <span class="demo-step-tag">Multi-rol financiero</span>
+        </div>
+      </div>
+      <div class="demo-step">
+        <div class="demo-step-num dim">4</div>
+        <div class="demo-step-content">
+          <h4>Ranking de pacientes y vouchers</h4>
+          <p>Los pacientes con mayor inversión aparecen rankeados con barras de progreso de pago. El historial de vouchers emitidos está siempre accesible.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     DOCTORES
+══════════════════════════════════════ -->
+<section class="section bg-white">
+  <div class="section-label">Módulo 4</div>
+  <h2 class="section-title">Equipo médico <em>bajo control</em></h2>
+  <p class="section-lead">Administra el cuerpo médico y el personal administrativo con roles diferenciados, cuentas de acceso seguras y estadísticas por doctor.</p>
+
+  <div class="demo-split">
+    <div class="demo-steps">
+      <div class="demo-step">
+        <div class="demo-step-num primary">1</div>
+        <div class="demo-step-content">
+          <h4>Cuerpo médico y administrativos</h4>
+          <p>La plataforma distingue entre doctores (con citas y especialidad) y personal administrativo (sin agenda clínica).</p>
+          <span class="demo-step-tag">Dos tablas diferenciadas</span>
+        </div>
+      </div>
+      <div class="demo-step">
+        <div class="demo-step-num primary">2</div>
+        <div class="demo-step-content">
+          <h4>Citas del mes en tiempo real</h4>
+          <p>Cada doctor muestra cuántas citas tiene en el mes actual. Dato útil para evaluar productividad y distribución de carga.</p>
+          <span class="demo-step-tag">Métricas por médico</span>
+        </div>
+      </div>
+      <div class="demo-step">
+        <div class="demo-step-num primary">3</div>
+        <div class="demo-step-content">
+          <h4>Creación con cuenta de acceso</h4>
+          <p>Al crear un nuevo doctor, se genera automáticamente su cuenta de Supabase Auth para acceder al sistema con email y contraseña seguros.</p>
+          <span class="demo-step-tag">🔐 Auth integrado</span>
+        </div>
+      </div>
+      <div class="demo-step">
+        <div class="demo-step-num dim">4</div>
+        <div class="demo-step-content">
+          <h4>Color de doctor y firma digital</h4>
+          <p>Cada doctor tiene un color asignado que aparece en el calendario. Su firma digital se adjunta automáticamente a los vouchers y documentos.</p>
+        </div>
+      </div>
+    </div>
+    <div class="browser-frame">
+      <div class="browser-bar">
+        <div class="browser-dots">
+          <div class="browser-dot"></div>
+          <div class="browser-dot"></div>
+          <div class="browser-dot"></div>
+        </div>
+        <div class="browser-url">curae.app/doctores</div>
+      </div>
+      <img src="assets/9.png" alt="Gestión de Doctores Curae" loading="lazy">
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     INVENTARIO
+══════════════════════════════════════ -->
+<section class="section bg-teal-light">
+  <div class="section-label">Módulo 5</div>
+  <h2 class="section-title">Inventario <em>que se cuida solo</em></h2>
+  <p class="section-lead">Controla el stock de insumos médicos y recibe alertas automáticas antes de que los productos se agoten.</p>
+
+  <div class="demo-split">
+    <div class="browser-frame" style="order: -1;">
+      <div class="browser-bar">
+        <div class="browser-dots">
+          <div class="browser-dot"></div>
+          <div class="browser-dot"></div>
+          <div class="browser-dot"></div>
+        </div>
+        <div class="browser-url">curae.app/inventario</div>
+      </div>
+      <img src="assets/8.png" alt="Inventario Curae" loading="lazy">
+    </div>
+    <div style="display: flex; flex-direction: column; justify-content: center; gap: 20px;">
+      <h3 style="font-family: var(--font-display); font-size: 28px; font-weight: 400; color: var(--texto);">
+        Nunca más te quedes <em style="font-style: italic; color: var(--texto-3);">sin insumos</em>
+      </h3>
+      <p style="font-size: 15px; color: var(--texto-2); line-height: 1.8;">
+        Cada producto tiene un nivel mínimo configurado. Cuando el stock cae por debajo de ese umbral,
+        el Dashboard muestra automáticamente una alerta con los productos en riesgo.
+      </p>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div class="alert-bubble">
+          <span class="alert-tag">🟢 En Stock</span>
+          <div class="alert-title">Stock normal: operación sin interrupciones</div>
+          <div class="alert-sub">El indicador de barra está verde y el stock supera el mínimo</div>
+        </div>
+        <div class="alert-bubble" style="background: rgba(220,38,38,0.05); border-color: rgba(220,38,38,0.18);">
+          <span class="alert-tag" style="color: var(--rojo); background: var(--rojo-bg);">⚠️ Stock Bajo</span>
+          <div class="alert-title">Badge de advertencia visible en la tarjeta</div>
+          <div class="alert-sub">Aparece también en el Dashboard como alerta global</div>
+        </div>
+        <div class="alert-bubble">
+          <span class="alert-tag">💰 Capital</span>
+          <div class="alert-title">Valor total en inventario visible en Finanzas</div>
+          <div class="alert-sub">El capital inmovilizado en insumos se suma al KPI de Finanzas</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     NÚMEROS
+══════════════════════════════════════ -->
+<div class="nums-bar">
+  <div>
+    <span class="nums-big">∞</span>
+    <div class="nums-desc">Doctores sin límite<br>escala con tu clínica</div>
+  </div>
+  <div>
+    <span class="nums-big">∞</span>
+    <div class="nums-desc">Pacientes sin límite<br>en la nube</div>
+  </div>
+  <div>
+    <span class="nums-big">100%</span>
+    <div class="nums-desc">Cloud · Sin servidor<br>propio · Siempre online</div>
+  </div>
+  <div>
+    <span class="nums-big">6</span>
+    <div class="nums-desc">Módulos integrados<br>en una sola plataforma</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     ROADMAP
+══════════════════════════════════════ -->
+<section class="dark-section">
+  <div class="dark-content">
+    <div class="dark-label">La Plataforma</div>
+    <h2 class="dark-title">Todo listo. <em>Desde el primer día.</em></h2>
+    <p class="dark-lead">
+      Curae está completamente operativa con todos sus módulos. Sin instalaciones, sin servidores propios —
+      accedes desde cualquier dispositivo con conexión a internet.
+    </p>
+    <div class="dark-grid" style="grid-template-columns: repeat(2, 1fr);">
+      <div class="dark-card">
+        <span class="dark-card-icon">📅</span>
+        <div class="dark-card-title">Calendario multi-doctor</div>
+        <p class="dark-card-desc">Vistas diaria, semanal y mensual. Google Calendar sync. Anti-colisión automática. Citas de emergencia. Sin límite de doctores.</p>
+      </div>
+      <div class="dark-card">
+        <span class="dark-card-icon">🦷</span>
+        <div class="dark-card-title">Historia Clínica digital</div>
+        <p class="dark-card-desc">Odontograma FDI interactivo, presupuestos detallados, evolución por sesión y vouchers con firma del especialista.</p>
+      </div>
+      <div class="dark-card">
+        <span class="dark-card-icon">💰</span>
+        <div class="dark-card-title">Finanzas en tiempo real</div>
+        <p class="dark-card-desc">Dashboard con KPIs diarios, mensuales y anuales. Flujo de caja, ranking de doctores y distribución de gastos.</p>
+      </div>
+      <div class="dark-card">
+        <span class="dark-card-icon">☁️</span>
+        <div class="dark-card-title">100% Cloud · Seguro</div>
+        <p class="dark-card-desc">PostgreSQL en la nube con seguridad por fila (RLS), autenticación robusta y acceso desde cualquier lugar.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     HOJA DE RUTA DETALLADA
+══════════════════════════════════════ -->
+<section class="section bg-white">
+  <div class="section-label">Módulos del Sistema</div>
+  <h2 class="section-title">Todo <em>disponible hoy</em></h2>
+  <p class="section-lead">Curae opera con todos sus módulos activos. Cada uno diseñado para trabajar en conjunto y escalar con tu clínica.</p>
+  <div class="ruta-grid">
+    <div class="ruta-step active">
+      <div class="ruta-num">01</div>
+      <div class="ruta-title">Calendario & Citas</div>
+      <p class="ruta-desc">Vista diaria, semanal y mensual. Multi-doctor, Google Calendar, anti-colisiones.</p>
+      <span class="ruta-when when-now">● Activo</span>
+    </div>
+    <div class="ruta-step active">
+      <div class="ruta-num">02</div>
+      <div class="ruta-title">Pacientes & HC</div>
+      <p class="ruta-desc">Odontograma FDI, presupuestos, evolución por sesión y vouchers.</p>
+      <span class="ruta-when when-now">● Activo</span>
+    </div>
+    <div class="ruta-step active">
+      <div class="ruta-num">03</div>
+      <div class="ruta-title">Finanzas Maestras</div>
+      <p class="ruta-desc">Dashboard financiero, flujo de caja anual, ranking de pacientes y doctores.</p>
+      <span class="ruta-when when-now">● Activo</span>
+    </div>
+    <div class="ruta-step active">
+      <div class="ruta-num">04</div>
+      <div class="ruta-title">Doctores & Roles</div>
+      <p class="ruta-desc">Sin límite de doctores. Roles Admin, Doctor y Asistente. Acceso por cuenta segura.</p>
+      <span class="ruta-when when-now">● Activo</span>
+    </div>
+    <div class="ruta-step active">
+      <div class="ruta-num">05</div>
+      <div class="ruta-title">Inventario</div>
+      <p class="ruta-desc">Control de stock con alertas automáticas de mínimo y capital en tiempo real.</p>
+      <span class="ruta-when when-now">● Activo</span>
+    </div>
+    <div class="ruta-step active">
+      <div class="ruta-num">06</div>
+      <div class="ruta-title">Google Calendar Sync</div>
+      <p class="ruta-desc">Cada doctor sincroniza automáticamente sus citas con su Google Calendar personal.</p>
+      <span class="ruta-when when-now">● Activo</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     QUOTE / CONTACTO
+══════════════════════════════════════ -->
+<div class="quote-section">
+  <div>
+    <span class="quote-mark">"</span>
+    <p class="quote-text">
+      Curae no es solo un software.<br>
+      Es la <strong>columna vertebral digital</strong><br>
+      de una clínica que quiere crecer.
+    </p>
+    <p class="quote-attr">— Curae Online · Arequipa, Perú · 2026</p>
+  </div>
+  <div class="quote-right">
+    <div class="contact-row">
+      <span class="contact-icon">🌐</span>
+      <div class="contact-info">
+        <strong>Plataforma Web</strong>
+        curae.app
+      </div>
+    </div>
+    <div class="contact-row">
+      <span class="contact-icon">🔐</span>
+      <div class="contact-info">
+        <strong>Tecnología</strong>
+        React · Supabase · Vite · Google APIs
+      </div>
+    </div>
+    <div class="contact-row">
+      <span class="contact-icon">☁️</span>
+      <div class="contact-info">
+        <strong>Infraestructura</strong>
+        100% Cloud · PostgreSQL · Auth seguro
+      </div>
+    </div>
+    <div class="contact-row">
+      <span class="contact-icon">🛡️</span>
+      <div class="contact-info">
+        <strong>Seguridad</strong>
+        RLS por fila · Roles · Sin datos expuestos
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     CTA
+══════════════════════════════════════ -->
+<section class="cta">
+  <div class="cta-bg"></div>
+  <div class="cta-content">
+    <h2 class="cta-title">
+      Tu clínica merece<br>
+      <span>lo mejor del futuro</span>
+    </h2>
+    <p class="cta-sub">Curae está lista para gestionar tu clínica hoy. Agenda, pacientes, finanzas y más, en un solo sistema.</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     FOOTER
+══════════════════════════════════════ -->
+<footer class="footer">
+  <div class="footer-logo">Curae Online</div>
+</footer>
+
+</body>
+</html>
